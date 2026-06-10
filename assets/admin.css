@@ -1,0 +1,87 @@
+.blueprint-bundle-maker .bbm-panel {
+	max-width: 920px;
+	padding: 20px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+}
+
+.blueprint-bundle-maker .bbm-actions {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	margin: 18px 0;
+}
+
+.blueprint-bundle-maker .bbm-progress {
+	height: 14px;
+	overflow: hidden;
+	background: #f0f0f1;
+	border: 1px solid #c3c4c7;
+	border-radius: 3px;
+}
+
+.blueprint-bundle-maker .bbm-progress-bar {
+	height: 100%;
+	background: #2271b1;
+	transition: width 180ms ease;
+}
+
+.blueprint-bundle-maker .bbm-status {
+	margin: 12px 0;
+	font-weight: 600;
+}
+
+.blueprint-bundle-maker .bbm-details {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(120px, 1fr));
+	gap: 12px;
+	margin: 16px 0 0;
+}
+
+.blueprint-bundle-maker .bbm-details div {
+	padding: 12px;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+}
+
+.blueprint-bundle-maker .bbm-details dt {
+	margin-bottom: 4px;
+	color: #646970;
+	font-size: 12px;
+	text-transform: uppercase;
+}
+
+.blueprint-bundle-maker .bbm-details dd {
+	margin: 0;
+	font-size: 18px;
+}
+
+.blueprint-bundle-maker .bbm-warnings {
+	margin-top: 16px;
+	padding: 12px;
+	background: #fcf9e8;
+	border-left: 4px solid #dba617;
+}
+
+.blueprint-bundle-maker .bbm-warnings ul {
+	margin-bottom: 0;
+}
+
+@media (max-width: 782px) {
+	.blueprint-bundle-maker .bbm-actions,
+	.blueprint-bundle-maker .bbm-details {
+		display: block;
+	}
+
+	.blueprint-bundle-maker .bbm-actions .button {
+		width: 100%;
+		margin-bottom: 8px;
+		text-align: center;
+	}
+
+	.blueprint-bundle-maker .bbm-details div {
+		margin-bottom: 8px;
+	}
+}

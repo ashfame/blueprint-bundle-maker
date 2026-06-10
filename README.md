@@ -32,3 +32,4 @@ Use `--force` to overwrite an existing output file.
 - `blueprint_bundle_maker_active_plugins`
 - `blueprint_bundle_maker_job_capability`
 - `blueprint_bundle_maker_wxr_args`
+- `blueprint_bundle_maker_zip_chunk_file_limit`

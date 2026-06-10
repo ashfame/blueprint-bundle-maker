@@ -249,10 +249,10 @@ final class Bundle_Generator {
 		fseek( $list, (int) $job['zip']['offset'] );
 
 		$deadline    = microtime( true ) + max( 1, (float) $time_budget );
-		$chunk_limit = (int) apply_filters( 'blueprint_bundle_maker_zip_chunk_file_limit', 150, $job );
-		$processed   = 0;
+		$chunk_limit = max( 1, (int) apply_filters( 'blueprint_bundle_maker_zip_chunk_file_limit', 150, $job ) );
+		$chunk_processed = 0;
 
-		while ( ! feof( $list ) && microtime( true ) < $deadline && $processed < $chunk_limit ) {
+		while ( ! feof( $list ) && microtime( true ) < $deadline && $chunk_processed < $chunk_limit ) {
 			$line = fgets( $list );
 			if ( false === $line ) {
 				break;
@@ -262,6 +262,9 @@ final class Bundle_Generator {
 			if ( ! is_string( $relative_path ) || '' === $relative_path ) {
 				continue;
 			}
+
+			++$job['zip']['processed'];
+			++$chunk_processed;
 
 			$absolute_path = trailingslashit( wp_normalize_path( WP_CONTENT_DIR ) ) . $relative_path;
 			$local_name    = 'wp-content/' . $relative_path;
@@ -283,7 +286,6 @@ final class Bundle_Generator {
 				++$job['zip']['skipped'];
 			}
 
-			++$processed;
 		}
 
 		$job['zip']['offset'] = ftell( $list );
@@ -298,9 +300,9 @@ final class Bundle_Generator {
 		$job['message'] = $complete
 			? __( 'WordPress files ZIP complete.', 'blueprint-bundle-maker' )
 			: sprintf(
-				/* translators: 1: zipped count, 2: total count. */
-				__( 'Zipping files: %1$s of %2$s.', 'blueprint-bundle-maker' ),
-				number_format_i18n( (int) $job['zip']['files'] ),
+				/* translators: 1: processed count, 2: total count. */
+				__( 'Zipping files: %1$s of %2$s processed.', 'blueprint-bundle-maker' ),
+				number_format_i18n( (int) $job['zip']['processed'] ),
 				number_format_i18n( (int) $job['scan']['files'] )
 			);
 
@@ -352,10 +354,19 @@ final class Bundle_Generator {
 			throw new \RuntimeException( esc_html__( 'Could not create the final bundle ZIP.', 'blueprint-bundle-maker' ) );
 		}
 
-		$zip->addFile( $blueprint_path, 'blueprint.json' );
-		$zip->addFile( $wxr_path, 'content/site.wxr' );
-		$zip->addFile( $wp_files_path, 'files/wordpress-files.zip' );
-		$zip->addFile( $manifest_path, 'metadata/manifest.json' );
+		$bundle_files = array(
+			'blueprint.json'            => $blueprint_path,
+			'content/site.wxr'          => $wxr_path,
+			'files/wordpress-files.zip' => $wp_files_path,
+			'metadata/manifest.json'    => $manifest_path,
+		);
+
+		foreach ( $bundle_files as $local_name => $source_path ) {
+			if ( ! $zip->addFile( $source_path, $local_name ) ) {
+				$zip->close();
+				throw new \RuntimeException( esc_html__( 'Could not add a file to the final bundle ZIP.', 'blueprint-bundle-maker' ) );
+			}
+		}
 
 		if ( ! $zip->close() ) {
 			throw new \RuntimeException( esc_html__( 'Could not finalize the bundle ZIP.', 'blueprint-bundle-maker' ) );
@@ -393,6 +404,7 @@ final class Bundle_Generator {
 				'bytes'          => file_exists( $wp_files_path ) ? filesize( $wp_files_path ) : 0,
 				'scanned_files'  => (int) $job['scan']['files'],
 				'scanned_bytes'  => (int) $job['scan']['bytes'],
+				'processed_files' => (int) $job['zip']['processed'],
 				'zipped_files'   => (int) $job['zip']['files'],
 				'zipped_bytes'   => (int) $job['zip']['bytes'],
 				'skipped_files'  => (int) $job['zip']['skipped'],

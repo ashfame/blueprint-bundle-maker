@@ -219,7 +219,11 @@ final class Admin_Page {
 	 */
 	public function download() {
 		if ( ! current_user_can( $this->capability() ) ) {
-			wp_die( esc_html__( 'You are not allowed to download bundles.', 'blueprint-bundle-maker' ), 403 );
+			wp_die(
+				esc_html__( 'You are not allowed to download bundles.', 'blueprint-bundle-maker' ),
+				'',
+				array( 'response' => 403 )
+			);
 		}
 
 		$job_id = isset( $_GET['job_id'] ) ? sanitize_text_field( wp_unslash( $_GET['job_id'] ) ) : '';
@@ -227,12 +231,20 @@ final class Admin_Page {
 
 		$job = $this->store->get( $job_id );
 		if ( ! $job || 'completed' !== $job['status'] ) {
-			wp_die( esc_html__( 'Bundle job not found or not complete.', 'blueprint-bundle-maker' ), 404 );
+			wp_die(
+				esc_html__( 'Bundle job not found or not complete.', 'blueprint-bundle-maker' ),
+				'',
+				array( 'response' => 404 )
+			);
 		}
 
 		$bundle_path = $this->store->get_bundle_path( $job );
 		if ( ! $bundle_path || ! is_readable( $bundle_path ) ) {
-			wp_die( esc_html__( 'Bundle file not found.', 'blueprint-bundle-maker' ), 404 );
+			wp_die(
+				esc_html__( 'Bundle file not found.', 'blueprint-bundle-maker' ),
+				'',
+				array( 'response' => 404 )
+			);
 		}
 
 		if ( function_exists( 'session_write_close' ) ) {
@@ -282,10 +294,11 @@ final class Admin_Page {
 			'percent'  => (int) $job['percent'],
 			'warnings' => $job['warnings'],
 			'counts'   => array(
-				'scanned_files' => (int) $job['scan']['files'],
-				'zipped_files'  => (int) $job['zip']['files'],
-				'skipped_files' => (int) $job['zip']['skipped'],
-				'excluded'      => (int) $job['scan']['excluded'],
+				'scanned_files'   => (int) $job['scan']['files'],
+				'processed_files' => (int) $job['zip']['processed'],
+				'zipped_files'    => (int) $job['zip']['files'],
+				'skipped_files'   => (int) $job['zip']['skipped'],
+				'excluded'        => (int) $job['scan']['excluded'],
 			),
 		);
 

@@ -22,11 +22,14 @@ final class Blueprint_Writer {
 		$steps = array(
 			array(
 				'step'              => 'importWordPressFiles',
-				'pathInZip'         => '/',
 				'wordPressFilesZip' => array(
 					'resource' => 'bundled',
 					'path'     => '/files/wordpress-files.zip',
 				),
+			),
+			array(
+				'step'     => 'login',
+				'username' => 'admin',
 			),
 		);
 

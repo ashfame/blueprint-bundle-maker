@@ -58,14 +58,22 @@ final class Job_Store {
 				'excluded' => 0,
 			),
 			'zip'        => array(
-				'offset'  => 0,
-				'files'   => 0,
-				'bytes'   => 0,
-				'skipped' => 0,
+				'offset'    => 0,
+				'processed' => 0,
+				'files'     => 0,
+				'bytes'     => 0,
+				'skipped'   => 0,
 			),
 			'warnings'   => array(),
 			'errors'     => array(),
 		);
+
+		if ( is_multisite() ) {
+			$this->add_warning(
+				$job,
+				__( 'Multisite detected. This bundle exports the current site content and wp-content files, but it does not recreate network database state.', 'blueprint-bundle-maker' )
+			);
+		}
 
 		$this->save( $job );
 
@@ -296,10 +304,10 @@ final class Job_Store {
 				return 5;
 			case 'scan':
 				return 15;
-			case 'zip':
-				$total = max( 1, (int) $job['scan']['files'] );
-				$done  = min( $total, (int) $job['zip']['files'] );
-				return 45 + (int) floor( ( $done / $total ) * 45 );
+				case 'zip':
+					$total = max( 1, (int) $job['scan']['files'] );
+					$done  = min( $total, (int) $job['zip']['processed'] );
+					return 45 + (int) floor( ( $done / $total ) * 45 );
 			case 'bundle':
 				return 95;
 			case 'complete':

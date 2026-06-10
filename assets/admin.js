@@ -25,7 +25,7 @@
 		$('#bbm-status').text(job.message || '');
 		$('#bbm-stage').text(job.stage || '-');
 		$('#bbm-files').text(counts.scanned_files || 0);
-		$('#bbm-zipped').text(counts.zipped_files || 0);
+		$('#bbm-zipped').text((counts.zipped_files || 0) + ' / ' + (counts.processed_files || 0));
 		$('#bbm-skipped').text((counts.skipped_files || 0) + ' / ' + (counts.excluded || 0));
 
 		if (job.warnings && job.warnings.length) {

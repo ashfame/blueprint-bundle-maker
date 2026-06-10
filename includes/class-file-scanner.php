@@ -20,6 +20,13 @@ final class File_Scanner {
 	private $store;
 
 	/**
+	 * Storage directory relative to wp-content.
+	 *
+	 * @var string|null
+	 */
+	private $storage_relative_path = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param Job_Store $store Job store.
@@ -177,9 +184,43 @@ final class File_Scanner {
 			'regex:(^|/).*(backup|dump|export).*\.(zip|tar|tgz|gz|bz2|7z|rar)$',
 		);
 
+		$storage_relative_path = $this->get_storage_relative_path();
+		if ( '' !== $storage_relative_path ) {
+			$excludes[] = $storage_relative_path;
+		}
+
 		$excludes = (array) apply_filters( 'blueprint_bundle_maker_excluded_paths', $excludes, $context );
 
 		return $this->matches_rules( $relative_path, $excludes, $context );
+	}
+
+	/**
+	 * Get the export storage path relative to wp-content when applicable.
+	 *
+	 * @return string
+	 */
+	private function get_storage_relative_path() {
+		if ( null !== $this->storage_relative_path ) {
+			return $this->storage_relative_path;
+		}
+
+		$wp_content_dir = trailingslashit( untrailingslashit( wp_normalize_path( WP_CONTENT_DIR ) ) );
+
+		try {
+			$storage_dir = trailingslashit( untrailingslashit( wp_normalize_path( $this->store->get_root_dir() ) ) );
+		} catch ( \Throwable $throwable ) {
+			$this->storage_relative_path = '';
+			return '';
+		}
+
+		if ( 0 !== strpos( $storage_dir, $wp_content_dir ) ) {
+			$this->storage_relative_path = '';
+			return '';
+		}
+
+		$this->storage_relative_path = trim( substr( $storage_dir, strlen( $wp_content_dir ) ), '/' );
+
+		return $this->storage_relative_path;
 	}
 
 	/**

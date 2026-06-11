@@ -176,6 +176,7 @@ Important steps:
 - `importWxr` imports the WXR content.
 - `setSiteOptions` restores a safe allowlist of scalar site options.
 - `runPHP` maps front page/posts page options after WXR import when needed.
+- Final `runPHP` flushes rewrite rules so restored permalink structures work without manually visiting Settings > Permalinks.
 
 ## Security Model
 

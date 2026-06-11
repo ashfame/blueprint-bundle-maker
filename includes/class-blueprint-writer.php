@@ -72,6 +72,8 @@ final class Blueprint_Writer {
 			$steps[] = $front_page_step;
 		}
 
+		$steps[] = $this->get_flush_rewrite_rules_step();
+
 		$blueprint = array(
 			'$schema'           => 'https://playground.wordpress.net/blueprint-schema.json',
 			'preferredVersions' => $this->get_preferred_versions( $job ),
@@ -244,7 +246,21 @@ final class Blueprint_Writer {
 			. 'foreach ($bbm_pages as $bbm_option => $bbm_page) { '
 			. '$bbm_post = get_page_by_path($bbm_page["path"], OBJECT, $bbm_page["post_type"]); '
 			. 'if ($bbm_post) { update_option($bbm_option, (int) $bbm_post->ID); } '
-			. '} flush_rewrite_rules();';
+			. '}';
+
+		return array(
+			'step' => 'runPHP',
+			'code' => $code,
+		);
+	}
+
+	/**
+	 * Build the final runPHP step that refreshes permalink rewrite rules.
+	 *
+	 * @return array
+	 */
+	private function get_flush_rewrite_rules_step() {
+		$code = "<?php require_once '/wordpress/wp-load.php'; flush_rewrite_rules();";
 
 		return array(
 			'step' => 'runPHP',

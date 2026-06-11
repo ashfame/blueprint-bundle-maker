@@ -48,6 +48,8 @@ final class Admin_Page {
 		add_action( 'wp_ajax_blueprint_bundle_maker_cancel_job', array( $this, 'ajax_cancel_job' ) );
 		add_action( 'wp_ajax_blueprint_bundle_maker_publish_bundle', array( $this, 'ajax_publish_bundle' ) );
 		add_action( 'admin_post_blueprint_bundle_maker_download', array( $this, 'download' ) );
+		add_action( 'admin_post_blueprint_bundle_maker_public_bundle', array( $this, 'public_bundle' ) );
+		add_action( 'admin_post_nopriv_blueprint_bundle_maker_public_bundle', array( $this, 'public_bundle' ) );
 		add_action( 'admin_post_blueprint_bundle_maker_delete_bundle', array( $this, 'delete_bundle' ) );
 	}
 
@@ -278,16 +280,112 @@ final class Admin_Page {
 			);
 		}
 
+		$this->stream_zip_file( $bundle_path, basename( $bundle_path ), 'attachment', false );
+	}
+
+	/**
+	 * Public CORS-enabled bundle endpoint.
+	 */
+	public function public_bundle() {
+		$this->send_public_bundle_cors_headers();
+
+		if ( 'OPTIONS' === $this->request_method() ) {
+			status_header( 204 );
+			header( 'Content-Length: 0' );
+			exit;
+		}
+
+		$filename = isset( $_GET['file'] ) ? sanitize_text_field( wp_unslash( $_GET['file'] ) ) : '';
+
+		try {
+			$export = $this->store->get_public_export( $filename );
+		} catch ( \Throwable $throwable ) {
+			$this->send_public_bundle_error( 500, __( 'Could not load the public bundle.', 'blueprint-bundle-maker' ) );
+		}
+
+		if ( empty( $export['path'] ) || empty( $export['filename'] ) ) {
+			$this->send_public_bundle_error( 404, __( 'Public bundle not found.', 'blueprint-bundle-maker' ) );
+		}
+
+		$this->stream_zip_file( $export['path'], $export['filename'], 'inline', true );
+	}
+
+	/**
+	 * Stream a ZIP file response.
+	 *
+	 * @param string $bundle_path File path.
+	 * @param string $filename Download filename.
+	 * @param string $disposition Content disposition.
+	 * @param bool   $public Whether this is the public CORS endpoint.
+	 */
+	private function stream_zip_file( $bundle_path, $filename, $disposition, $public ) {
 		if ( function_exists( 'session_write_close' ) ) {
 			session_write_close();
 		}
 
-		nocache_headers();
+		if ( $public ) {
+			header_remove( 'Expires' );
+			header_remove( 'Pragma' );
+			header( 'Cache-Control: public, max-age=3600' );
+		} else {
+			nocache_headers();
+		}
+
+		status_header( 200 );
 		header( 'Content-Type: application/zip' );
-		header( 'Content-Disposition: attachment; filename="' . basename( $bundle_path ) . '"' );
+		header( 'X-Content-Type-Options: nosniff' );
+		header( 'Content-Disposition: ' . $disposition . '; filename="' . $this->header_filename( $filename ) . '"' );
 		header( 'Content-Length: ' . filesize( $bundle_path ) );
+
+		if ( 'HEAD' === $this->request_method() ) {
+			exit;
+		}
+
 		readfile( $bundle_path );
 		exit;
+	}
+
+	/**
+	 * Emit CORS headers for public bundle responses.
+	 */
+	private function send_public_bundle_cors_headers() {
+		header( 'Access-Control-Allow-Origin: *' );
+		header( 'Access-Control-Allow-Methods: GET, HEAD, OPTIONS' );
+		header( 'Access-Control-Allow-Headers: Origin, Accept, Content-Type, Range' );
+		header( 'Access-Control-Expose-Headers: Content-Length, Content-Type, Content-Disposition' );
+		header( 'Cross-Origin-Resource-Policy: cross-origin' );
+	}
+
+	/**
+	 * Send a public bundle error response.
+	 *
+	 * @param int    $status HTTP status.
+	 * @param string $message Error message.
+	 */
+	private function send_public_bundle_error( $status, $message ) {
+		status_header( $status );
+		header( 'Content-Type: text/plain; charset=utf-8' );
+		echo esc_html( $message );
+		exit;
+	}
+
+	/**
+	 * Get the current request method.
+	 *
+	 * @return string
+	 */
+	private function request_method() {
+		return isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( sanitize_key( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) ) : 'GET';
+	}
+
+	/**
+	 * Sanitize a filename for a response header.
+	 *
+	 * @param string $filename Filename.
+	 * @return string
+	 */
+	private function header_filename( $filename ) {
+		return str_replace( array( '"', '\\', "\r", "\n" ), '', basename( (string) $filename ) );
 	}
 
 	/**

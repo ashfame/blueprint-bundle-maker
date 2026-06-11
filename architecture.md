@@ -47,7 +47,7 @@ wp-content/uploads/blueprint-bundle-maker-public/
 blueprint-bundle-<host>-<timestamp>-<random>.zip
 ```
 
-The private directory is protected with `.htaccess` where supported. The public directory is intentionally URL-addressable and uses unguessable filenames. It also writes an Apache CORS hint for ZIP files where supported by the host.
+The private directory is protected with `.htaccess` where supported. Published bundles are stored separately with unguessable filenames, and the URLs shown to admins route through WordPress so the plugin can add the required CORS headers. New public storage directories also deny direct static access with `.htaccess` where Apache honors it.
 
 ## Generation Stages
 
@@ -122,6 +122,20 @@ The public filename includes a random suffix. After publishing, the row displays
 - Copy URL
 - Open in Playground
 
+The copied public URL is not the direct uploads URL. It points to:
+
+```text
+wp-admin/admin-post.php?action=blueprint_bundle_maker_public_bundle&file=<public-filename>
+```
+
+That endpoint is intentionally available without authentication because the random filename acts as the bearer token. It streams the ZIP through PHP and sends:
+
+```text
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET, HEAD, OPTIONS
+Access-Control-Allow-Headers: Origin, Accept, Content-Type, Range
+```
+
 The Playground URL uses:
 
 ```text
@@ -171,7 +185,7 @@ blueprint_bundle_maker_admin
 
 Download and delete links use per-action nonces.
 
-Private generated bundles are downloaded through `admin-post.php` with a nonce and capability check. Public bundles are intentionally accessible by URL after **Get URL** is used.
+Private generated bundles are downloaded through `admin-post.php` with a nonce and capability check. Public bundles are stored with unguessable filenames and streamed through a public `admin-post.php` endpoint after **Get URL** is used.
 
 ## Cleanup
 
@@ -207,10 +221,8 @@ Required PHP capability:
 
 Host behavior that can affect published URLs:
 
-- Public access to `wp-content/uploads`
 - HTTPS availability
-- CORS/header support for ZIP files
-- Web server support for `.htaccess`
+- Public access to `wp-admin/admin-post.php`
 
 WP-CLI can generate bundles without the browser:
 

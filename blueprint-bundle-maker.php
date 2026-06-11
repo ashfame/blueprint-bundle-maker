@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Blueprint Bundle Maker
  * Description: Generates a WordPress Playground Blueprint bundle ZIP from the current installation.
- * Version: 0.2.1
+ * Version: 0.2.2
  * Author: Blueprint Bundle Maker Contributors
  * Text Domain: blueprint-bundle-maker
  * Requires at least: 6.2
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'BLUEPRINT_BUNDLE_MAKER_VERSION', '0.2.1' );
+define( 'BLUEPRINT_BUNDLE_MAKER_VERSION', '0.2.2' );
 define( 'BLUEPRINT_BUNDLE_MAKER_FILE', __FILE__ );
 define( 'BLUEPRINT_BUNDLE_MAKER_DIR', plugin_dir_path( __FILE__ ) );
 define( 'BLUEPRINT_BUNDLE_MAKER_URL', plugin_dir_url( __FILE__ ) );

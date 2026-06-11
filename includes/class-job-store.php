@@ -424,7 +424,7 @@ final class Job_Store {
 			return null;
 		}
 
-		$url = trailingslashit( $this->get_public_url_base() ) . rawurlencode( $filename );
+		$url = $this->get_public_bundle_url( $filename );
 
 		return array(
 			'filename'       => $filename,
@@ -490,19 +490,19 @@ final class Job_Store {
 	}
 
 	/**
-	 * Get the public export base URL.
+	 * Get the public route URL for an export filename.
 	 *
+	 * @param string $filename Export filename.
 	 * @return string
-	 * @throws \RuntimeException When uploads are unavailable.
 	 */
-	public function get_public_url_base() {
-		$upload_dir = wp_upload_dir( null, false );
-
-		if ( ! empty( $upload_dir['error'] ) ) {
-			throw new \RuntimeException( esc_html( $upload_dir['error'] ) );
-		}
-
-		return trailingslashit( $upload_dir['baseurl'] ) . self::PUBLIC_DIR_NAME;
+	public function get_public_bundle_url( $filename ) {
+		return add_query_arg(
+			array(
+				'action' => 'blueprint_bundle_maker_public_bundle',
+				'file'   => $this->sanitize_public_filename( $filename ),
+			),
+			admin_url( 'admin-post.php' )
+		);
 	}
 
 	/**
@@ -562,7 +562,7 @@ final class Job_Store {
 		if ( ! file_exists( $htaccess ) ) {
 			file_put_contents(
 				$htaccess,
-				"<IfModule mod_headers.c>\n<FilesMatch \"\\.zip$\">\nHeader set Access-Control-Allow-Origin \"*\"\n</FilesMatch>\n</IfModule>\n"
+				"Deny from all\n"
 			);
 		}
 	}

@@ -21,9 +21,14 @@
 	white-space: nowrap;
 }
 
+.blueprint-bundle-maker .bbm-public-url-line {
+	margin-top: 6px;
+}
+
 .blueprint-bundle-maker .bbm-table-url {
 	width: 100%;
-	min-width: 360px;
+	max-width: 100%;
+	min-width: 320px;
 }
 
 .blueprint-bundle-maker .bbm-progress {
@@ -88,22 +93,20 @@
 }
 
 .blueprint-bundle-maker .bbm-generated-bundles th:nth-child(1),
-.blueprint-bundle-maker .bbm-generated-bundles th:nth-child(2),
 .blueprint-bundle-maker .bbm-generated-bundles th:nth-child(3),
 .blueprint-bundle-maker .bbm-generated-bundles td:nth-child(1),
-.blueprint-bundle-maker .bbm-generated-bundles td:nth-child(2),
 .blueprint-bundle-maker .bbm-generated-bundles td:nth-child(3) {
 	width: 1%;
 	white-space: nowrap;
 }
 
-.blueprint-bundle-maker .bbm-generated-bundles th:nth-child(4),
-.blueprint-bundle-maker .bbm-generated-bundles td:nth-child(4) {
+.blueprint-bundle-maker .bbm-generated-bundles th:nth-child(2),
+.blueprint-bundle-maker .bbm-generated-bundles td:nth-child(2) {
 	width: auto;
 }
 
-.blueprint-bundle-maker .bbm-generated-bundles th:nth-child(5),
-.blueprint-bundle-maker .bbm-generated-bundles td:nth-child(5) {
+.blueprint-bundle-maker .bbm-generated-bundles th:nth-child(4),
+.blueprint-bundle-maker .bbm-generated-bundles td:nth-child(4) {
 	width: 1%;
 	white-space: nowrap;
 }

@@ -105,7 +105,7 @@ That ID is used for row-level actions:
 
 - Download
 - Get URL
-- Open Playground
+- Open in Playground
 - Delete
 
 ## Publishing Public URLs
@@ -120,7 +120,7 @@ The public filename includes a random suffix. After publishing, the row displays
 
 - Public bundle URL
 - Copy URL
-- Open Playground
+- Open in Playground
 
 The Playground URL uses:
 

@@ -409,14 +409,13 @@ final class Admin_Page {
 					<th scope="col"><?php esc_html_e( 'Created', 'blueprint-bundle-maker' ); ?></th>
 					<th scope="col"><?php esc_html_e( 'File', 'blueprint-bundle-maker' ); ?></th>
 					<th scope="col"><?php esc_html_e( 'Size', 'blueprint-bundle-maker' ); ?></th>
-					<th scope="col"><?php esc_html_e( 'Public URL', 'blueprint-bundle-maker' ); ?></th>
 					<th scope="col"><?php esc_html_e( 'Actions', 'blueprint-bundle-maker' ); ?></th>
 				</tr>
 			</thead>
 			<tbody id="bbm-generated-bundles-body">
 				<?php if ( empty( $bundles ) ) : ?>
 					<tr id="bbm-no-generated-bundles">
-						<td colspan="5"><?php esc_html_e( 'No generated bundles yet.', 'blueprint-bundle-maker' ); ?></td>
+						<td colspan="4"><?php esc_html_e( 'No generated bundles yet.', 'blueprint-bundle-maker' ); ?></td>
 					</tr>
 				<?php endif; ?>
 
@@ -425,6 +424,15 @@ final class Admin_Page {
 				<?php endforeach; ?>
 			</tbody>
 		</table>
+		<p class="description">
+			<?php
+			printf(
+				/* translators: %s: WordPress timezone name. */
+				esc_html__( 'Created times use this site\'s WordPress timezone: %s.', 'blueprint-bundle-maker' ),
+				esc_html( wp_timezone_string() )
+			);
+			?>
+		</p>
 		<?php
 	}
 
@@ -437,32 +445,34 @@ final class Admin_Page {
 		?>
 		<tr data-bbm-bundle-id="<?php echo esc_attr( $bundle['id'] ); ?>">
 			<td><?php echo esc_html( $bundle['created'] ); ?></td>
-			<td><code><?php echo esc_html( $bundle['filename'] ); ?></code></td>
-			<td><?php echo esc_html( $bundle['size_label'] ); ?></td>
 			<td>
+				<code><?php echo esc_html( $bundle['filename'] ); ?></code>
 				<?php if ( ! empty( $bundle['public_url'] ) ) : ?>
-					<input type="url" class="regular-text code bbm-table-url" readonly value="<?php echo esc_url( $bundle['public_url'] ); ?>" />
-					<button type="button" class="button bbm-copy-url" data-url="<?php echo esc_url( $bundle['public_url'] ); ?>">
-						<?php esc_html_e( 'Copy URL', 'blueprint-bundle-maker' ); ?>
-					</button>
+					<div class="bbm-public-url-line">
+						<input type="url" class="regular-text code bbm-table-url" readonly value="<?php echo esc_url( $bundle['public_url'] ); ?>" />
+					</div>
 				<?php else : ?>
-					<span class="description"><?php esc_html_e( 'Not published', 'blueprint-bundle-maker' ); ?></span>
+					<div class="description"><?php esc_html_e( 'Not published', 'blueprint-bundle-maker' ); ?></div>
 				<?php endif; ?>
 			</td>
+			<td><?php echo esc_html( $bundle['size_label'] ); ?></td>
 			<td class="bbm-row-actions">
 				<a class="button" href="<?php echo esc_url( $bundle['download_url'] ); ?>">
 					<?php esc_html_e( 'Download', 'blueprint-bundle-maker' ); ?>
 				</a>
 				<?php if ( ! empty( $bundle['public_url'] ) ) : ?>
-					<a class="button button-primary" href="<?php echo esc_url( $bundle['playground_url'] ); ?>" target="_blank" rel="noopener">
+					<button type="button" class="button bbm-copy-url" data-url="<?php echo esc_url( $bundle['public_url'] ); ?>">
+						<?php esc_html_e( 'Copy URL', 'blueprint-bundle-maker' ); ?>
+					</button>
+					<a class="button" href="<?php echo esc_url( $bundle['playground_url'] ); ?>" target="_blank" rel="noopener">
 						<?php esc_html_e( 'Open in Playground', 'blueprint-bundle-maker' ); ?>
 					</a>
 				<?php else : ?>
-					<button type="button" class="button button-primary bbm-publish-bundle" data-bundle-id="<?php echo esc_attr( $bundle['id'] ); ?>">
+					<button type="button" class="button bbm-publish-bundle" data-bundle-id="<?php echo esc_attr( $bundle['id'] ); ?>">
 						<?php esc_html_e( 'Get URL', 'blueprint-bundle-maker' ); ?>
 					</button>
 				<?php endif; ?>
-				<a class="button-link-delete bbm-delete-bundle" href="<?php echo esc_url( $bundle['delete_url'] ); ?>">
+				<a class="button bbm-delete-bundle" href="<?php echo esc_url( $bundle['delete_url'] ); ?>">
 					<?php esc_html_e( 'Delete', 'blueprint-bundle-maker' ); ?>
 				</a>
 			</td>

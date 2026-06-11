@@ -129,31 +129,27 @@
 	function renderBundleRow(bundle) {
 		var $existing = $('tr[data-bbm-bundle-id="' + bundle.id + '"]');
 		var $row = $('<tr>').attr('data-bbm-bundle-id', bundle.id);
-		var $urlCell = $('<td>');
+		var $fileCell = $('<td>');
 		var $actions = $('<td>').addClass('bbm-row-actions');
 
 		$('<td>').text(bundle.created).appendTo($row);
-		$('<td>').append($('<code>').text(bundle.filename)).appendTo($row);
-		$('<td>').text(bundle.size_label).appendTo($row);
+		$fileCell.append($('<code>').text(bundle.filename));
 
 		if (bundle.public_url) {
-			$('<input>')
+			var $urlLine = $('<div>').addClass('bbm-public-url-line');
+
+			$urlLine.append($('<input>')
 				.attr({ type: 'url', readonly: 'readonly' })
 				.addClass('regular-text code bbm-table-url')
-				.val(bundle.public_url)
-				.appendTo($urlCell);
+				.val(bundle.public_url));
 
-			$('<button>')
-				.attr({ type: 'button' })
-				.addClass('button bbm-copy-url')
-				.data('url', bundle.public_url)
-				.text(BlueprintBundleMaker.i18n.copyUrl)
-				.appendTo($urlCell);
+			$fileCell.append($urlLine);
 		} else {
-			$('<span>').addClass('description').text(BlueprintBundleMaker.i18n.notPublished).appendTo($urlCell);
+			$fileCell.append($('<div>').addClass('description').text(BlueprintBundleMaker.i18n.notPublished));
 		}
 
-		$urlCell.appendTo($row);
+		$fileCell.appendTo($row);
+		$('<td>').text(bundle.size_label).appendTo($row);
 
 		$('<a>')
 			.addClass('button')
@@ -162,8 +158,15 @@
 			.appendTo($actions);
 
 		if (bundle.public_url) {
+			$('<button>')
+				.attr({ type: 'button' })
+				.addClass('button bbm-copy-url')
+				.data('url', bundle.public_url)
+				.text(BlueprintBundleMaker.i18n.copyUrl)
+				.appendTo($actions);
+
 			$('<a>')
-				.addClass('button button-primary')
+				.addClass('button')
 				.attr({
 					href: bundle.playground_url,
 					target: '_blank',
@@ -174,14 +177,14 @@
 		} else {
 			$('<button>')
 				.attr({ type: 'button' })
-				.addClass('button button-primary bbm-publish-bundle')
+				.addClass('button bbm-publish-bundle')
 				.data('bundle-id', bundle.id)
 				.text(BlueprintBundleMaker.i18n.getUrl)
 				.appendTo($actions);
 		}
 
 		$('<a>')
-			.addClass('button-link-delete bbm-delete-bundle')
+			.addClass('button bbm-delete-bundle')
 			.attr('href', bundle.delete_url)
 			.text(BlueprintBundleMaker.i18n.delete)
 			.appendTo($actions);

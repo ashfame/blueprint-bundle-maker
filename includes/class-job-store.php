@@ -77,9 +77,7 @@ final class Job_Store {
 			);
 		}
 
-		$this->save( $job );
-
-		return $job;
+		return $this->save( $job );
 	}
 
 	/**
@@ -104,12 +102,15 @@ final class Job_Store {
 	 * Persist a job.
 	 *
 	 * @param array $job Job state.
+	 * @return array Saved job state.
 	 */
 	public function save( array $job ) {
 		$job['updated_at'] = time();
 		$job['percent']    = $this->calculate_percent( $job );
 
 		update_option( self::OPTION_PREFIX . $job['id'], $job, false );
+
+		return $job;
 	}
 
 	/**
@@ -192,6 +193,13 @@ final class Job_Store {
 
 		$this->ensure_public_root();
 
+		if ( ! empty( $job['paths']['public_bundle'] ) ) {
+			$existing_export = $this->get_public_export( $job['paths']['public_bundle'] );
+			if ( $existing_export ) {
+				return $existing_export;
+			}
+		}
+
 		$host   = wp_parse_url( home_url(), PHP_URL_HOST );
 		$host   = $host ? sanitize_title( $host ) : 'site';
 		$host   = '' !== $host ? $host : 'site';
@@ -213,6 +221,46 @@ final class Job_Store {
 		$job['paths']['public_bundle'] = $filename;
 
 		return $this->get_public_export( $filename );
+	}
+
+	/**
+	 * Get completed bundle generation jobs.
+	 *
+	 * @return array
+	 */
+	public function list_completed_jobs() {
+		global $wpdb;
+
+		$option_names = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s",
+				$wpdb->esc_like( self::OPTION_PREFIX ) . '%'
+			)
+		);
+
+		$jobs = array();
+		foreach ( $option_names as $option_name ) {
+			$job = get_option( $option_name );
+			if ( ! is_array( $job ) || 'completed' !== ( $job['status'] ?? '' ) ) {
+				continue;
+			}
+
+			$bundle_path = $this->get_bundle_path( $job );
+			if ( '' === $bundle_path || ! is_readable( $bundle_path ) ) {
+				continue;
+			}
+
+			$jobs[] = $job;
+		}
+
+		usort(
+			$jobs,
+			function ( $a, $b ) {
+				return (int) filemtime( $this->get_bundle_path( $b ) ) <=> (int) filemtime( $this->get_bundle_path( $a ) );
+			}
+		);
+
+		return $jobs;
 	}
 
 	/**
@@ -288,6 +336,28 @@ final class Job_Store {
 		}
 
 		return unlink( $export['path'] );
+	}
+
+	/**
+	 * Delete a generated bundle job and its public copy, when present.
+	 *
+	 * @param string $id Job ID.
+	 * @return bool
+	 */
+	public function delete_job( $id ) {
+		$job = $this->get( $id );
+		if ( ! $job ) {
+			return false;
+		}
+
+		if ( ! empty( $job['paths']['public_bundle'] ) ) {
+			$this->delete_public_export( $job['paths']['public_bundle'] );
+		}
+
+		$this->remove_directory( $this->get_job_dir( $job['id'] ) );
+		delete_option( self::OPTION_PREFIX . $job['id'] );
+
+		return true;
 	}
 
 	/**
@@ -415,17 +485,6 @@ final class Job_Store {
 		$cutoff  = time() - max( HOUR_IN_SECONDS, $max_age );
 		$root    = $this->get_root_dir();
 
-		if ( is_dir( $root . '/jobs' ) ) {
-			$dirs = glob( $root . '/jobs/*', GLOB_ONLYDIR );
-			if ( is_array( $dirs ) ) {
-				foreach ( $dirs as $dir ) {
-					if ( filemtime( $dir ) && filemtime( $dir ) < $cutoff ) {
-						$this->remove_directory( $dir );
-					}
-				}
-			}
-		}
-
 		$option_names = $wpdb->get_col(
 			$wpdb->prepare(
 				"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s",
@@ -433,10 +492,38 @@ final class Job_Store {
 			)
 		);
 
+		$known_completed_jobs = array();
+
 		foreach ( $option_names as $option_name ) {
 			$job = get_option( $option_name );
-			if ( is_array( $job ) && ! empty( $job['updated_at'] ) && (int) $job['updated_at'] < $cutoff ) {
+			if ( ! is_array( $job ) || empty( $job['id'] ) ) {
+				continue;
+			}
+
+			if ( 'completed' === ( $job['status'] ?? '' ) ) {
+				$known_completed_jobs[] = $this->sanitize_job_id( $job['id'] );
+				continue;
+			}
+
+			if ( ! empty( $job['updated_at'] ) && (int) $job['updated_at'] < $cutoff ) {
+				$this->remove_directory( $this->get_job_dir( $job['id'] ) );
 				delete_option( $option_name );
+			}
+		}
+
+		if ( is_dir( $root . '/jobs' ) ) {
+			$dirs = glob( $root . '/jobs/*', GLOB_ONLYDIR );
+			if ( is_array( $dirs ) ) {
+				foreach ( $dirs as $dir ) {
+					$job_id = basename( $dir );
+					if ( in_array( $job_id, $known_completed_jobs, true ) ) {
+						continue;
+					}
+
+					if ( filemtime( $dir ) && filemtime( $dir ) < $cutoff ) {
+						$this->remove_directory( $dir );
+					}
+				}
 			}
 		}
 	}

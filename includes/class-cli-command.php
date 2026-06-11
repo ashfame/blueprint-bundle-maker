@@ -48,6 +48,9 @@ final class CLI_Command {
 	 * [--force]
 	 * : Overwrite the output path when it already exists.
 	 *
+	 * [--publish]
+	 * : Publish the generated bundle to the public bundle directory and print Playground URLs.
+	 *
 	 * ## EXAMPLES
 	 *
 	 *     wp blueprint-bundle make --output=/tmp/site-bundle.zip
@@ -56,8 +59,9 @@ final class CLI_Command {
 	 * @param array $assoc_args Associative args.
 	 */
 	public function make( $args, $assoc_args ) {
-		$output = isset( $assoc_args['output'] ) ? (string) $assoc_args['output'] : '';
-		$force  = isset( $assoc_args['force'] );
+		$output  = isset( $assoc_args['output'] ) ? (string) $assoc_args['output'] : '';
+		$force   = isset( $assoc_args['force'] );
+		$publish = isset( $assoc_args['publish'] );
 
 		if ( '' !== $output && file_exists( $output ) && ! $force ) {
 			\WP_CLI::error( 'Output file exists. Use --force to overwrite it.' );
@@ -103,7 +107,11 @@ final class CLI_Command {
 
 		\WP_CLI::success( 'Bundle ready: ' . $bundle_path );
 
-		if ( ! empty( $job['paths']['public_bundle'] ) ) {
+		if ( $publish ) {
+			$job = $this->generator->publish_bundle( $job['id'] );
+		}
+
+		if ( $publish && ! empty( $job['paths']['public_bundle'] ) ) {
 			$public_export = $this->store->get_public_export( $job['paths']['public_bundle'] );
 			if ( $public_export ) {
 				\WP_CLI::log( 'Public URL: ' . $public_export['url'] );

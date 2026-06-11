@@ -25,8 +25,8 @@
 		$('#bbm-status').text(job.message || '');
 		$('#bbm-stage').text(job.stage || '-');
 		$('#bbm-files').text(counts.scanned_files || 0);
-		$('#bbm-zipped').text((counts.zipped_files || 0) + ' / ' + (counts.processed_files || 0));
-		$('#bbm-skipped').text((counts.skipped_files || 0) + ' / ' + (counts.excluded || 0));
+		$('#bbm-zipped').text(counts.zipped_files || 0);
+		$('#bbm-skipped').text(counts.skipped_files || 0);
 
 		if (job.warnings && job.warnings.length) {
 			$('#bbm-warnings')
@@ -38,10 +38,9 @@
 			$('#bbm-warnings').prop('hidden', true).empty();
 		}
 
-		if (job.status === 'completed' && job.download_url) {
-			$('#bbm-download').attr('href', job.download_url).prop('hidden', false);
-			if (job.public_export) {
-				renderPublicExport(job.public_export);
+		if (job.status === 'completed') {
+			if (job.bundle) {
+				renderBundleRow(job.bundle);
 			}
 			setBusy(false);
 		}
@@ -123,72 +122,78 @@
 		return deferred.promise();
 	}
 
-	function renderPublicExport(exportData) {
-		$('#bbm-public-url').val(exportData.url);
-		$('#bbm-open-playground').attr('href', exportData.playground_url).prop('hidden', false);
-		$('#bbm-public-links').prop('hidden', false);
-
-		if ($('tr[data-bbm-file="' + exportData.filename + '"]').length) {
-			return;
-		}
-
-		$('#bbm-no-public-bundles').remove();
-
-		var $row = $('<tr>').attr('data-bbm-file', exportData.filename);
+	function renderBundleRow(bundle) {
+		var $existing = $('tr[data-bbm-job-id="' + bundle.job_id + '"]');
+		var $row = $('<tr>').attr('data-bbm-job-id', bundle.job_id);
 		var $urlCell = $('<td>');
 		var $actions = $('<td>').addClass('bbm-row-actions');
 
-		$('<td>').text(exportData.created).appendTo($row);
-		$('<td>').append($('<code>').text(exportData.filename)).appendTo($row);
-		$('<td>').text(exportData.size_label).appendTo($row);
+		$('<td>').text(bundle.created).appendTo($row);
+		$('<td>').append($('<code>').text(bundle.filename)).appendTo($row);
+		$('<td>').text(bundle.size_label).appendTo($row);
 
-		$('<input>')
-			.attr({ type: 'url', readonly: 'readonly' })
-			.addClass('regular-text code bbm-table-url')
-			.val(exportData.url)
-			.appendTo($urlCell);
+		if (bundle.public_url) {
+			$('<input>')
+				.attr({ type: 'url', readonly: 'readonly' })
+				.addClass('regular-text code bbm-table-url')
+				.val(bundle.public_url)
+				.appendTo($urlCell);
 
-		$('<button>')
-			.attr({ type: 'button' })
-			.addClass('button bbm-copy-url')
-			.data('url', exportData.url)
-			.text(BlueprintBundleMaker.i18n.copyUrl)
-			.appendTo($urlCell);
+			$('<button>')
+				.attr({ type: 'button' })
+				.addClass('button bbm-copy-url')
+				.data('url', bundle.public_url)
+				.text(BlueprintBundleMaker.i18n.copyUrl)
+				.appendTo($urlCell);
+		} else {
+			$('<span>').addClass('description').text(BlueprintBundleMaker.i18n.notPublished).appendTo($urlCell);
+		}
 
 		$urlCell.appendTo($row);
 
 		$('<a>')
 			.addClass('button')
-			.attr('href', exportData.url)
+			.attr('href', bundle.download_url)
 			.text(BlueprintBundleMaker.i18n.download)
 			.appendTo($actions);
 
-		$('<a>')
-			.addClass('button button-primary')
-			.attr({
-				href: exportData.playground_url,
-				target: '_blank',
-				rel: 'noopener'
-			})
-			.text(BlueprintBundleMaker.i18n.openPlayground)
-			.appendTo($actions);
+		if (bundle.public_url) {
+			$('<a>')
+				.addClass('button button-primary')
+				.attr({
+					href: bundle.playground_url,
+					target: '_blank',
+					rel: 'noopener'
+				})
+				.text(BlueprintBundleMaker.i18n.openPlayground)
+				.appendTo($actions);
+		} else {
+			$('<button>')
+				.attr({ type: 'button' })
+				.addClass('button button-primary bbm-publish-bundle')
+				.data('job-id', bundle.job_id)
+				.text(BlueprintBundleMaker.i18n.getUrl)
+				.appendTo($actions);
+		}
 
 		$('<a>')
-			.addClass('button-link-delete bbm-delete-public-bundle')
-			.attr('href', exportData.delete_url)
+			.addClass('button-link-delete bbm-delete-bundle')
+			.attr('href', bundle.delete_url)
 			.text(BlueprintBundleMaker.i18n.delete)
 			.appendTo($actions);
 
 		$actions.appendTo($row);
-		$('#bbm-public-bundles-body').prepend($row);
+
+		if ($existing.length) {
+			$existing.replaceWith($row);
+		} else {
+			$('#bbm-no-generated-bundles').remove();
+			$('#bbm-generated-bundles-body').prepend($row);
+		}
 	}
 
 	$(function () {
 		$('#bbm-start').on('click', function () {
-			$('#bbm-download').prop('hidden', true).attr('href', '#');
-			$('#bbm-public-links').prop('hidden', true);
-			$('#bbm-public-url').val('');
-			$('#bbm-open-playground').prop('hidden', true).attr('href', '#');
 			$('#bbm-warnings').prop('hidden', true).empty();
 			$('#bbm-status').text(BlueprintBundleMaker.i18n.working);
 			$('#bbm-progress-bar').css('width', '0%');
@@ -205,6 +210,32 @@
 				render(currentJob);
 				runNextStep();
 			}).fail(fail);
+		});
+
+		$(document).on('click', '.bbm-publish-bundle', function () {
+			var $button = $(this);
+			var jobId = $button.data('job-id');
+
+			if (!jobId) {
+				return;
+			}
+
+			$button.prop('disabled', true);
+
+			post('blueprint_bundle_maker_publish_bundle', {
+				job_id: jobId
+			}).done(function (response) {
+				if (!response || !response.success || !response.data || !response.data.bundle) {
+					fail();
+					$button.prop('disabled', false);
+					return;
+				}
+
+				renderBundleRow(response.data.bundle);
+			}).fail(function (response) {
+				fail(response);
+				$button.prop('disabled', false);
+			});
 		});
 
 		$('#bbm-cancel').on('click', function () {
@@ -240,7 +271,7 @@
 			});
 		});
 
-		$(document).on('click', '.bbm-delete-public-bundle', function (event) {
+		$(document).on('click', '.bbm-delete-bundle', function (event) {
 			if (!window.confirm(BlueprintBundleMaker.i18n.confirmDelete)) {
 				event.preventDefault();
 			}

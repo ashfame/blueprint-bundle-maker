@@ -68,7 +68,7 @@ final class Bundle_Generator {
 		if ( 'completed' !== $job['status'] ) {
 			$job['status']  = 'canceled';
 			$job['message'] = __( 'Canceled.', 'blueprint-bundle-maker' );
-			$this->store->save( $job );
+			$job = $this->store->save( $job );
 		}
 
 		return $job;
@@ -131,9 +131,39 @@ final class Bundle_Generator {
 			$job['errors'][] = $throwable->getMessage();
 		}
 
-		$this->store->save( $job );
+		$job = $this->store->save( $job );
 
 		return $job;
+	}
+
+	/**
+	 * Publish a completed job bundle to the public bundle directory.
+	 *
+	 * @param string $id Job ID.
+	 * @return array
+	 * @throws \RuntimeException When the job cannot be published.
+	 */
+	public function publish_bundle( $id ) {
+		$job = $this->get_job_or_fail( $id );
+
+		if ( 'completed' !== $job['status'] ) {
+			throw new \RuntimeException( esc_html__( 'Only completed bundles can be published.', 'blueprint-bundle-maker' ) );
+		}
+
+		$bundle_path = $this->store->get_bundle_path( $job );
+		if ( '' === $bundle_path || ! is_readable( $bundle_path ) ) {
+			throw new \RuntimeException( esc_html__( 'The generated bundle file is not available.', 'blueprint-bundle-maker' ) );
+		}
+
+		$public_export = $this->store->publish_bundle( $job, $bundle_path );
+		if ( ! empty( $public_export['url'] ) && 0 === strpos( $public_export['url'], 'http://' ) ) {
+			$this->store->add_warning(
+				$job,
+				__( 'The public bundle URL uses HTTP. The Playground website may require an HTTPS URL that is reachable from the browser.', 'blueprint-bundle-maker' )
+			);
+		}
+
+		return $this->store->save( $job );
 	}
 
 	/**
@@ -373,13 +403,6 @@ final class Bundle_Generator {
 			throw new \RuntimeException( esc_html__( 'Could not finalize the bundle ZIP.', 'blueprint-bundle-maker' ) );
 		}
 
-		$public_export = $this->store->publish_bundle( $job, $bundle_path );
-		if ( ! empty( $public_export['url'] ) && 0 === strpos( $public_export['url'], 'http://' ) ) {
-			$this->store->add_warning(
-				$job,
-				__( 'The public bundle URL uses HTTP. The Playground website may require an HTTPS URL that is reachable from the browser.', 'blueprint-bundle-maker' )
-			);
-		}
 	}
 
 	/**

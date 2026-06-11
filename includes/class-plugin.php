@@ -38,6 +38,9 @@ final class Plugin {
 		$scanner   = new File_Scanner( $store );
 		$blueprint = new Blueprint_Writer();
 		$generator = new Bundle_Generator( $store, $scanner, $blueprint );
+		$public    = new Public_Bundle_Controller( $store );
+
+		$public->hooks();
 
 		if ( is_admin() ) {
 			$admin = new Admin_Page( $generator, $store );

@@ -17,9 +17,9 @@ The WordPress files ZIP contains `wp-content` with smart exclusions for cache, b
 
 Activate the plugin, then go to **Tools > Blueprint Bundle Maker** and click **Generate Bundle**. The browser keeps the staged job moving through AJAX requests and shows progress until the download is ready.
 
-Completed bundles appear in a generated bundles table. Each row can be downloaded, deleted, or published with **Get URL**. Publishing copies the bundle under the uploads directory with an unguessable filename and then shows a public bundle URL plus an **Open in Playground** link using `https://playground.wordpress.net/?blueprint-url=...`.
+Completed bundles appear in a generated bundles table. Each row can be downloaded, deleted, or published with **Get URL**. Publishing copies the bundle under the uploads directory with an unguessable filename and then shows a public `.zip` bundle URL plus an **Open in Playground** link using `https://playground.wordpress.net/?blueprint-url=...`.
 
-The public bundle URL is routed through WordPress using `admin-post.php` so the plugin can stream the ZIP with CORS headers for Playground. The URL still needs to be publicly reachable by the browser, and HTTPS is recommended for loading bundles on `playground.wordpress.net`.
+The public bundle URL is routed through WordPress so the plugin can stream the ZIP with CORS headers for Playground. The URL still needs to be publicly reachable by the browser, and HTTPS is recommended for loading bundles on `playground.wordpress.net`.
 
 ## WP-CLI Usage
 

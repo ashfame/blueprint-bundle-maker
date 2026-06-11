@@ -122,19 +122,23 @@ The public filename includes a random suffix. After publishing, the row displays
 - Copy URL
 - Open in Playground
 
-The copied public URL is not the direct uploads URL. It points to:
+The copied public URL is not the direct uploads URL. It points to a WordPress-routed path that still ends in `.zip`:
 
 ```text
-wp-admin/admin-post.php?action=blueprint_bundle_maker_public_bundle&file=<public-filename>
+/blueprint-bundle-maker-public/<public-filename>.zip
 ```
 
-That endpoint is intentionally available without authentication because the random filename acts as the bearer token. It streams the ZIP through PHP and sends:
+On sites without pretty permalinks, the generated URL uses `/index.php/blueprint-bundle-maker-public/<public-filename>.zip`.
+
+That endpoint is intentionally available without authentication because the random filename acts as the bearer token. It streams the ZIP through PHP without a `Content-Disposition` header and sends:
 
 ```text
 Access-Control-Allow-Origin: *
 Access-Control-Allow-Methods: GET, HEAD, OPTIONS
 Access-Control-Allow-Headers: Origin, Accept, Content-Type, Range
 ```
+
+The older `admin-post.php?action=blueprint_bundle_maker_public_bundle&file=...` endpoint is still registered for compatibility with public URLs copied before the pretty ZIP route existed.
 
 The Playground URL uses:
 
@@ -197,6 +201,12 @@ Deleting a generated bundle row removes:
 - The matching public ZIP when one exists
 - The associated job option when one exists
 
+Uninstalling the plugin through WordPress runs `uninstall.php`, which removes:
+
+- `wp-content/uploads/blueprint-bundle-maker/`
+- `wp-content/uploads/blueprint-bundle-maker-public/`
+- Job options with the `blueprint_bundle_maker_job_` prefix
+
 ## Extension Points
 
 Filters:
@@ -222,7 +232,7 @@ Required PHP capability:
 Host behavior that can affect published URLs:
 
 - HTTPS availability
-- Public access to `wp-admin/admin-post.php`
+- WordPress receiving requests for `/blueprint-bundle-maker-public/*.zip`
 
 WP-CLI can generate bundles without the browser:
 

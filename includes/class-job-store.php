@@ -463,14 +463,30 @@ final class Job_Store {
 			return false;
 		}
 
-		if ( ! empty( $bundle['public_filename'] ) ) {
-			$this->delete_public_export( $bundle['public_filename'] );
-		}
+		$this->delete_public_exports_for_bundle( $bundle['path'] );
 
 		$this->remove_directory( $this->get_job_dir( $bundle['job_id'] ) );
 		delete_option( self::OPTION_PREFIX . $bundle['job_id'] );
 
 		return true;
+	}
+
+	/**
+	 * Delete public copies associated with a generated bundle.
+	 *
+	 * @param string $bundle_path Generated bundle path.
+	 */
+	private function delete_public_exports_for_bundle( $bundle_path ) {
+		$private_filename = basename( (string) $bundle_path );
+		if ( '' === $private_filename ) {
+			return;
+		}
+
+		foreach ( $this->list_public_exports() as $export ) {
+			if ( $private_filename === $this->private_filename_from_public_filename( $export['filename'] ) ) {
+				@unlink( $export['path'] );
+			}
+		}
 	}
 
 	/**
@@ -496,13 +512,12 @@ final class Job_Store {
 	 * @return string
 	 */
 	public function get_public_bundle_url( $filename ) {
-		return add_query_arg(
-			array(
-				'action' => 'blueprint_bundle_maker_public_bundle',
-				'file'   => $this->sanitize_public_filename( $filename ),
-			),
-			admin_url( 'admin-post.php' )
-		);
+		$path = '/blueprint-bundle-maker-public/' . rawurlencode( $this->sanitize_public_filename( $filename ) );
+		if ( '' === get_option( 'permalink_structure' ) ) {
+			$path = '/index.php' . $path;
+		}
+
+		return home_url( $path );
 	}
 
 	/**
@@ -559,10 +574,13 @@ final class Job_Store {
 		}
 
 		$htaccess = trailingslashit( $root ) . '.htaccess';
-		if ( ! file_exists( $htaccess ) ) {
+		$rules    = "Deny from all\n";
+		$current  = is_readable( $htaccess ) ? (string) file_get_contents( $htaccess ) : '';
+
+		if ( ! file_exists( $htaccess ) || false !== strpos( $current, 'Access-Control-Allow-Origin' ) ) {
 			file_put_contents(
 				$htaccess,
-				"Deny from all\n"
+				$rules
 			);
 		}
 	}

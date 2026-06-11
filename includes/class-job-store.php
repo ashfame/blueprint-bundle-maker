@@ -200,17 +200,8 @@ final class Job_Store {
 			}
 		}
 
-		$host   = wp_parse_url( home_url(), PHP_URL_HOST );
-		$host   = $host ? sanitize_title( $host ) : 'site';
-		$host   = '' !== $host ? $host : 'site';
-		$random = strtolower( wp_generate_password( 16, false, false ) );
-
-		$filename = sprintf(
-			'blueprint-bundle-%1$s-%2$s-%3$s.zip',
-			$host,
-			gmdate( 'Ymd-His' ),
-			$random
-		);
+		$random  = strtolower( wp_generate_password( 16, false, false ) );
+		$filename = $this->public_filename_from_bundle_path( $bundle_path, $random );
 
 		$public_path = trailingslashit( $this->get_public_dir() ) . $filename;
 
@@ -367,8 +358,19 @@ final class Job_Store {
 			return null;
 		}
 
+		$private_filename = basename( (string) $bundle_path );
+		$host             = $this->bundle_host_from_filename( $private_filename );
+
 		foreach ( $this->list_public_exports() as $export ) {
-			if ( (int) $export['size'] === $bundle_size && basename( $bundle_path ) === $this->private_filename_from_public_filename( $export['filename'] ) ) {
+			if ( (int) $export['size'] !== $bundle_size ) {
+				continue;
+			}
+
+			if ( $private_filename === $this->private_filename_from_public_filename( $export['filename'] ) ) {
+				return $export;
+			}
+
+			if ( '' !== $host && $host === $this->bundle_host_from_filename( $export['filename'] ) ) {
 				return $export;
 			}
 		}
@@ -463,7 +465,7 @@ final class Job_Store {
 			return false;
 		}
 
-		$this->delete_public_exports_for_bundle( $bundle['path'] );
+		$this->delete_public_exports_for_bundle( $bundle['path'], $bundle['public_filename'] );
 
 		$this->remove_directory( $this->get_job_dir( $bundle['job_id'] ) );
 		delete_option( self::OPTION_PREFIX . $bundle['job_id'] );
@@ -475,15 +477,38 @@ final class Job_Store {
 	 * Delete public copies associated with a generated bundle.
 	 *
 	 * @param string $bundle_path Generated bundle path.
+	 * @param string $known_public_filename Public filename already associated with the bundle.
 	 */
-	private function delete_public_exports_for_bundle( $bundle_path ) {
+	private function delete_public_exports_for_bundle( $bundle_path, $known_public_filename = '' ) {
 		$private_filename = basename( (string) $bundle_path );
 		if ( '' === $private_filename ) {
 			return;
 		}
 
+		$deleted = array();
+
+		if ( '' !== $known_public_filename ) {
+			$export = $this->get_public_export( $known_public_filename );
+			if ( $export ) {
+				@unlink( $export['path'] );
+				$deleted[] = $export['filename'];
+			}
+		}
+
+		$private_size = is_readable( $bundle_path ) ? (int) filesize( $bundle_path ) : -1;
+		$host         = $this->bundle_host_from_filename( $private_filename );
+
 		foreach ( $this->list_public_exports() as $export ) {
+			if ( in_array( $export['filename'], $deleted, true ) ) {
+				continue;
+			}
+
 			if ( $private_filename === $this->private_filename_from_public_filename( $export['filename'] ) ) {
+				@unlink( $export['path'] );
+				continue;
+			}
+
+			if ( $private_size >= 0 && (int) $export['size'] === $private_size && '' !== $host && $host === $this->bundle_host_from_filename( $export['filename'] ) ) {
 				@unlink( $export['path'] );
 			}
 		}
@@ -732,6 +757,47 @@ final class Job_Store {
 		}
 
 		return $filename;
+	}
+
+	/**
+	 * Build a public filename from the private bundle filename.
+	 *
+	 * @param string $bundle_path Generated bundle path.
+	 * @param string $random Random suffix.
+	 * @return string
+	 */
+	private function public_filename_from_bundle_path( $bundle_path, $random ) {
+		$private_filename = sanitize_file_name( wp_basename( (string) $bundle_path ) );
+
+		if ( preg_match( '/^blueprint-bundle-[a-z0-9-]+-\d{8}-\d{6}\.zip$/', $private_filename ) ) {
+			return preg_replace( '/\.zip$/', '-' . $random . '.zip', $private_filename );
+		}
+
+		$host = wp_parse_url( home_url(), PHP_URL_HOST );
+		$host = $host ? sanitize_title( $host ) : 'site';
+		$host = '' !== $host ? $host : 'site';
+
+		return sprintf(
+			'blueprint-bundle-%1$s-%2$s-%3$s.zip',
+			$host,
+			gmdate( 'Ymd-His' ),
+			$random
+		);
+	}
+
+	/**
+	 * Extract the host portion from a generated or public bundle filename.
+	 *
+	 * @param string $filename Bundle filename.
+	 * @return string
+	 */
+	private function bundle_host_from_filename( $filename ) {
+		$filename = sanitize_file_name( wp_basename( (string) $filename ) );
+		if ( ! preg_match( '/^blueprint-bundle-(.+)-\d{8}-\d{6}(?:-[a-z0-9]+)?\.zip$/', $filename, $matches ) ) {
+			return '';
+		}
+
+		return $matches[1];
 	}
 
 	/**

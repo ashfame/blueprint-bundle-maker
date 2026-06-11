@@ -116,7 +116,7 @@ Generated bundles are not published automatically from the admin UI. The row-lev
 wp-content/uploads/blueprint-bundle-maker-public/
 ```
 
-The public filename includes a random suffix. After publishing, the row displays:
+The public filename is derived from the private bundle filename with a random suffix appended before `.zip`. That keeps the public copy associated with its source bundle without relying on database state. After publishing, the row displays:
 
 - Public bundle URL
 - Copy URL

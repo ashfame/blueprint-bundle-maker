@@ -34,7 +34,7 @@ final class Blueprint_Writer {
 		);
 
 		$locale = get_locale();
-		if ( $locale ) {
+		if ( $locale && 'en_US' !== $locale ) {
 			$steps[] = array(
 				'step'     => 'setSiteLanguage',
 				'language' => $locale,
@@ -78,12 +78,43 @@ final class Blueprint_Writer {
 		}
 
 		$blueprint = array(
-			'$schema'     => 'https://playground.wordpress.net/blueprint-schema.json',
-			'landingPage' => '/wp-admin/',
-			'steps'       => $steps,
+			'$schema'           => 'https://playground.wordpress.net/blueprint-schema.json',
+			'preferredVersions' => $this->get_preferred_versions( $job ),
+			'landingPage'       => '/wp-admin/',
+			'steps'             => $steps,
 		);
 
 		return (array) apply_filters( 'blueprint_bundle_maker_blueprint', $blueprint, $job );
+	}
+
+	/**
+	 * Get preferred Playground runtime versions.
+	 *
+	 * @param array $job Job state.
+	 * @return array
+	 */
+	private function get_preferred_versions( array $job ) {
+		$preferred_versions = array();
+		$wp_version         = get_bloginfo( 'version' );
+
+		if ( is_string( $wp_version ) && preg_match( '/^\d+\.\d+/', $wp_version, $matches ) ) {
+			$preferred_versions['wp'] = $matches[0];
+		} else {
+			$preferred_versions['wp'] = 'latest';
+		}
+
+		if ( defined( 'PHP_MAJOR_VERSION' ) && defined( 'PHP_MINOR_VERSION' ) ) {
+			$php_version = PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;
+			if ( preg_match( '/^(7\.4|8\.[0-5])$/', $php_version ) ) {
+				$preferred_versions['php'] = $php_version;
+			}
+		}
+
+		if ( empty( $preferred_versions['php'] ) ) {
+			$preferred_versions['php'] = 'latest';
+		}
+
+		return (array) apply_filters( 'blueprint_bundle_maker_preferred_versions', $preferred_versions, $job );
 	}
 
 	/**

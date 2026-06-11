@@ -107,7 +107,7 @@ final class Admin_Page {
 					'copied'         => __( 'Copied', 'blueprint-bundle-maker' ),
 					'download'       => __( 'Download', 'blueprint-bundle-maker' ),
 					'getUrl'         => __( 'Get URL', 'blueprint-bundle-maker' ),
-					'openPlayground' => __( 'Open Playground', 'blueprint-bundle-maker' ),
+					'openPlayground' => __( 'Open in Playground', 'blueprint-bundle-maker' ),
 					'notPublished'   => __( 'Not published', 'blueprint-bundle-maker' ),
 					'delete'         => __( 'Delete', 'blueprint-bundle-maker' ),
 					'confirmDelete'  => __( 'Delete this bundle?', 'blueprint-bundle-maker' ),
@@ -403,7 +403,7 @@ final class Admin_Page {
 			</div>
 		<?php endif; ?>
 
-		<table class="wp-list-table widefat fixed striped bbm-generated-bundles">
+		<table class="wp-list-table widefat striped bbm-generated-bundles">
 			<thead>
 				<tr>
 					<th scope="col"><?php esc_html_e( 'Created', 'blueprint-bundle-maker' ); ?></th>
@@ -455,7 +455,7 @@ final class Admin_Page {
 				</a>
 				<?php if ( ! empty( $bundle['public_url'] ) ) : ?>
 					<a class="button button-primary" href="<?php echo esc_url( $bundle['playground_url'] ); ?>" target="_blank" rel="noopener">
-						<?php esc_html_e( 'Open Playground', 'blueprint-bundle-maker' ); ?>
+						<?php esc_html_e( 'Open in Playground', 'blueprint-bundle-maker' ); ?>
 					</a>
 				<?php else : ?>
 					<button type="button" class="button button-primary bbm-publish-bundle" data-bundle-id="<?php echo esc_attr( $bundle['id'] ); ?>">

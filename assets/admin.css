@@ -18,10 +18,12 @@
 	gap: 8px;
 	align-items: center;
 	flex-wrap: wrap;
+	white-space: nowrap;
 }
 
 .blueprint-bundle-maker .bbm-table-url {
-	min-width: min(100%, 440px);
+	width: 100%;
+	min-width: 360px;
 }
 
 .blueprint-bundle-maker .bbm-progress {
@@ -81,7 +83,29 @@
 }
 
 .blueprint-bundle-maker .bbm-generated-bundles {
+	table-layout: auto;
 	margin-top: 10px;
+}
+
+.blueprint-bundle-maker .bbm-generated-bundles th:nth-child(1),
+.blueprint-bundle-maker .bbm-generated-bundles th:nth-child(2),
+.blueprint-bundle-maker .bbm-generated-bundles th:nth-child(3),
+.blueprint-bundle-maker .bbm-generated-bundles td:nth-child(1),
+.blueprint-bundle-maker .bbm-generated-bundles td:nth-child(2),
+.blueprint-bundle-maker .bbm-generated-bundles td:nth-child(3) {
+	width: 1%;
+	white-space: nowrap;
+}
+
+.blueprint-bundle-maker .bbm-generated-bundles th:nth-child(4),
+.blueprint-bundle-maker .bbm-generated-bundles td:nth-child(4) {
+	width: auto;
+}
+
+.blueprint-bundle-maker .bbm-generated-bundles th:nth-child(5),
+.blueprint-bundle-maker .bbm-generated-bundles td:nth-child(5) {
+	width: 1%;
+	white-space: nowrap;
 }
 
 @media (max-width: 782px) {

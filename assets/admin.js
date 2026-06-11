@@ -14,7 +14,11 @@
 	function setBusy(isBusy) {
 		running = isBusy;
 		$('#bbm-start').prop('disabled', isBusy);
-		$('#bbm-cancel').prop('disabled', !isBusy || !currentJob);
+		updateCancelState();
+	}
+
+	function updateCancelState() {
+		$('#bbm-cancel').prop('disabled', !running || !currentJob);
 	}
 
 	function render(job) {
@@ -207,6 +211,7 @@
 				}
 
 				currentJob = response.data;
+				updateCancelState();
 				render(currentJob);
 				runNextStep();
 			}).fail(fail);

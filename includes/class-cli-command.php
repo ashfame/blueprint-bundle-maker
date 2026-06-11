@@ -102,5 +102,13 @@ final class CLI_Command {
 		}
 
 		\WP_CLI::success( 'Bundle ready: ' . $bundle_path );
+
+		if ( ! empty( $job['paths']['public_bundle'] ) ) {
+			$public_export = $this->store->get_public_export( $job['paths']['public_bundle'] );
+			if ( $public_export ) {
+				\WP_CLI::log( 'Public URL: ' . $public_export['url'] );
+				\WP_CLI::log( 'Playground URL: ' . $public_export['playground_url'] );
+			}
+		}
 	}
 }

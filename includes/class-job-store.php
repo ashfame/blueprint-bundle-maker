@@ -13,6 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Job_Store {
 	const OPTION_PREFIX = 'blueprint_bundle_maker_job_';
+	const PUBLIC_DIR_NAME = 'blueprint-bundle-maker-public';
 
 	/**
 	 * Create a new export job.
@@ -49,6 +50,7 @@ final class Job_Store {
 				'file_list'           => 'tmp/file-list.jsonl',
 				'blueprint'           => 'blueprint.json',
 				'manifest'            => 'metadata/manifest.json',
+				'public_bundle'       => '',
 			),
 			'scan'       => array(
 				'queue'    => array( '' ),
@@ -176,6 +178,161 @@ final class Job_Store {
 	}
 
 	/**
+	 * Publish a generated bundle to a public, unguessable URL.
+	 *
+	 * @param array  $job Job state.
+	 * @param string $bundle_path Private bundle path.
+	 * @return array|null Public export record.
+	 * @throws \RuntimeException When publishing fails.
+	 */
+	public function publish_bundle( array &$job, $bundle_path ) {
+		if ( ! is_readable( $bundle_path ) ) {
+			throw new \RuntimeException( esc_html__( 'The generated bundle cannot be read for publishing.', 'blueprint-bundle-maker' ) );
+		}
+
+		$this->ensure_public_root();
+
+		$host   = wp_parse_url( home_url(), PHP_URL_HOST );
+		$host   = $host ? sanitize_title( $host ) : 'site';
+		$host   = '' !== $host ? $host : 'site';
+		$random = strtolower( wp_generate_password( 16, false, false ) );
+
+		$filename = sprintf(
+			'blueprint-bundle-%1$s-%2$s-%3$s.zip',
+			$host,
+			gmdate( 'Ymd-His' ),
+			$random
+		);
+
+		$public_path = trailingslashit( $this->get_public_dir() ) . $filename;
+
+		if ( ! copy( $bundle_path, $public_path ) ) {
+			throw new \RuntimeException( esc_html__( 'Could not publish the bundle ZIP.', 'blueprint-bundle-maker' ) );
+		}
+
+		$job['paths']['public_bundle'] = $filename;
+
+		return $this->get_public_export( $filename );
+	}
+
+	/**
+	 * Get public bundle exports.
+	 *
+	 * @return array
+	 */
+	public function list_public_exports() {
+		$this->ensure_public_root();
+
+		$files = glob( trailingslashit( $this->get_public_dir() ) . '*.zip' );
+		if ( ! is_array( $files ) ) {
+			return array();
+		}
+
+		usort(
+			$files,
+			static function ( $a, $b ) {
+				return (int) filemtime( $b ) <=> (int) filemtime( $a );
+			}
+		);
+
+		$exports = array();
+		foreach ( $files as $file ) {
+			$export = $this->get_public_export( basename( $file ) );
+			if ( $export ) {
+				$exports[] = $export;
+			}
+		}
+
+		return $exports;
+	}
+
+	/**
+	 * Get one public export record.
+	 *
+	 * @param string $filename Export filename.
+	 * @return array|null
+	 */
+	public function get_public_export( $filename ) {
+		$filename = $this->sanitize_public_filename( $filename );
+		if ( '' === $filename ) {
+			return null;
+		}
+
+		$path = trailingslashit( $this->get_public_dir() ) . $filename;
+		if ( ! is_file( $path ) || ! is_readable( $path ) ) {
+			return null;
+		}
+
+		$url = trailingslashit( $this->get_public_url_base() ) . rawurlencode( $filename );
+
+		return array(
+			'filename'       => $filename,
+			'path'           => $path,
+			'url'            => $url,
+			'playground_url' => $this->get_playground_url( $url ),
+			'modified'       => (int) filemtime( $path ),
+			'size'           => (int) filesize( $path ),
+		);
+	}
+
+	/**
+	 * Delete a public bundle export.
+	 *
+	 * @param string $filename Export filename.
+	 * @return bool
+	 */
+	public function delete_public_export( $filename ) {
+		$export = $this->get_public_export( $filename );
+		if ( ! $export ) {
+			return false;
+		}
+
+		return unlink( $export['path'] );
+	}
+
+	/**
+	 * Get the public export directory.
+	 *
+	 * @return string
+	 * @throws \RuntimeException When uploads are unavailable.
+	 */
+	public function get_public_dir() {
+		$upload_dir = wp_upload_dir( null, false );
+
+		if ( ! empty( $upload_dir['error'] ) ) {
+			throw new \RuntimeException( esc_html( $upload_dir['error'] ) );
+		}
+
+		return trailingslashit( wp_normalize_path( $upload_dir['basedir'] ) ) . self::PUBLIC_DIR_NAME;
+	}
+
+	/**
+	 * Get the public export base URL.
+	 *
+	 * @return string
+	 * @throws \RuntimeException When uploads are unavailable.
+	 */
+	public function get_public_url_base() {
+		$upload_dir = wp_upload_dir( null, false );
+
+		if ( ! empty( $upload_dir['error'] ) ) {
+			throw new \RuntimeException( esc_html( $upload_dir['error'] ) );
+		}
+
+		return trailingslashit( $upload_dir['baseurl'] ) . self::PUBLIC_DIR_NAME;
+	}
+
+	/**
+	 * Build a Playground URL for a public bundle URL.
+	 *
+	 * @param string $bundle_url Public bundle URL.
+	 * @return string
+	 */
+	public function get_playground_url( $bundle_url ) {
+		return add_query_arg( 'blueprint-url', $bundle_url, 'https://playground.wordpress.net/' );
+	}
+
+	/**
 	 * Sanitize a job ID.
 	 *
 	 * @param string $id Raw job ID.
@@ -199,6 +356,32 @@ final class Job_Store {
 
 		$this->protect_directory( $root );
 		$this->protect_directory( $root . '/jobs' );
+	}
+
+	/**
+	 * Ensure the public export root exists.
+	 *
+	 * @throws \RuntimeException When the public root cannot be prepared.
+	 */
+	private function ensure_public_root() {
+		$root = $this->get_public_dir();
+
+		if ( ! wp_mkdir_p( $root ) ) {
+			throw new \RuntimeException( esc_html__( 'Could not create the public bundle directory.', 'blueprint-bundle-maker' ) );
+		}
+
+		$index = trailingslashit( $root ) . 'index.php';
+		if ( ! file_exists( $index ) ) {
+			file_put_contents( $index, "<?php\n// Silence is golden.\n" );
+		}
+
+		$htaccess = trailingslashit( $root ) . '.htaccess';
+		if ( ! file_exists( $htaccess ) ) {
+			file_put_contents(
+				$htaccess,
+				"<IfModule mod_headers.c>\n<FilesMatch \"\\.zip$\">\nHeader set Access-Control-Allow-Origin \"*\"\n</FilesMatch>\n</IfModule>\n"
+			);
+		}
 	}
 
 	/**
@@ -304,10 +487,10 @@ final class Job_Store {
 				return 5;
 			case 'scan':
 				return 15;
-				case 'zip':
-					$total = max( 1, (int) $job['scan']['files'] );
-					$done  = min( $total, (int) $job['zip']['processed'] );
-					return 45 + (int) floor( ( $done / $total ) * 45 );
+			case 'zip':
+				$total = max( 1, (int) $job['scan']['files'] );
+				$done  = min( $total, (int) $job['zip']['processed'] );
+				return 45 + (int) floor( ( $done / $total ) * 45 );
 			case 'bundle':
 				return 95;
 			case 'complete':
@@ -315,5 +498,21 @@ final class Job_Store {
 			default:
 				return isset( $job['percent'] ) ? (int) $job['percent'] : 0;
 		}
+	}
+
+	/**
+	 * Sanitize a public bundle filename.
+	 *
+	 * @param string $filename Filename.
+	 * @return string
+	 */
+	private function sanitize_public_filename( $filename ) {
+		$filename = sanitize_file_name( wp_basename( (string) $filename ) );
+
+		if ( ! preg_match( '/^blueprint-bundle-[a-z0-9-]+-\d{8}-\d{6}-[a-z0-9]+\.zip$/', $filename ) ) {
+			return '';
+		}
+
+		return $filename;
 	}
 }

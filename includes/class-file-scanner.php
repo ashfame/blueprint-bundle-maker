@@ -189,6 +189,11 @@ final class File_Scanner {
 			$excludes[] = $storage_relative_path;
 		}
 
+		$public_relative_path = $this->get_public_relative_path();
+		if ( '' !== $public_relative_path ) {
+			$excludes[] = $public_relative_path;
+		}
+
 		$excludes = (array) apply_filters( 'blueprint_bundle_maker_excluded_paths', $excludes, $context );
 
 		return $this->matches_rules( $relative_path, $excludes, $context );
@@ -221,6 +226,27 @@ final class File_Scanner {
 		$this->storage_relative_path = trim( substr( $storage_dir, strlen( $wp_content_dir ) ), '/' );
 
 		return $this->storage_relative_path;
+	}
+
+	/**
+	 * Get the public export path relative to wp-content when applicable.
+	 *
+	 * @return string
+	 */
+	private function get_public_relative_path() {
+		$wp_content_dir = trailingslashit( untrailingslashit( wp_normalize_path( WP_CONTENT_DIR ) ) );
+
+		try {
+			$public_dir = trailingslashit( untrailingslashit( wp_normalize_path( $this->store->get_public_dir() ) ) );
+		} catch ( \Throwable $throwable ) {
+			return '';
+		}
+
+		if ( 0 !== strpos( $public_dir, $wp_content_dir ) ) {
+			return '';
+		}
+
+		return trim( substr( $public_dir, strlen( $wp_content_dir ) ), '/' );
 	}
 
 	/**

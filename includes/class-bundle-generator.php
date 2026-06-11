@@ -372,6 +372,14 @@ final class Bundle_Generator {
 		if ( ! $zip->close() ) {
 			throw new \RuntimeException( esc_html__( 'Could not finalize the bundle ZIP.', 'blueprint-bundle-maker' ) );
 		}
+
+		$public_export = $this->store->publish_bundle( $job, $bundle_path );
+		if ( ! empty( $public_export['url'] ) && 0 === strpos( $public_export['url'], 'http://' ) ) {
+			$this->store->add_warning(
+				$job,
+				__( 'The public bundle URL uses HTTP. The Playground website may require an HTTPS URL that is reachable from the browser.', 'blueprint-bundle-maker' )
+			);
+		}
 	}
 
 	/**

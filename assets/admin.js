@@ -40,6 +40,9 @@
 
 		if (job.status === 'completed' && job.download_url) {
 			$('#bbm-download').attr('href', job.download_url).prop('hidden', false);
+			if (job.public_export) {
+				renderPublicExport(job.public_export);
+			}
 			setBusy(false);
 		}
 
@@ -83,9 +86,109 @@
 		}).fail(fail);
 	}
 
+	function getCopyText($button) {
+		var target = $button.data('copy-target');
+
+		if (target) {
+			return $(target).val() || '';
+		}
+
+		return $button.data('url') || '';
+	}
+
+	function copyText(text) {
+		if (window.navigator.clipboard && window.isSecureContext) {
+			return window.navigator.clipboard.writeText(text);
+		}
+
+		var deferred = $.Deferred();
+		var textarea = document.createElement('textarea');
+
+		textarea.value = text;
+		textarea.setAttribute('readonly', 'readonly');
+		textarea.style.position = 'fixed';
+		textarea.style.left = '-9999px';
+		document.body.appendChild(textarea);
+		textarea.select();
+
+		try {
+			document.execCommand('copy');
+			deferred.resolve();
+		} catch (error) {
+			deferred.reject(error);
+		}
+
+		document.body.removeChild(textarea);
+
+		return deferred.promise();
+	}
+
+	function renderPublicExport(exportData) {
+		$('#bbm-public-url').val(exportData.url);
+		$('#bbm-open-playground').attr('href', exportData.playground_url).prop('hidden', false);
+		$('#bbm-public-links').prop('hidden', false);
+
+		if ($('tr[data-bbm-file="' + exportData.filename + '"]').length) {
+			return;
+		}
+
+		$('#bbm-no-public-bundles').remove();
+
+		var $row = $('<tr>').attr('data-bbm-file', exportData.filename);
+		var $urlCell = $('<td>');
+		var $actions = $('<td>').addClass('bbm-row-actions');
+
+		$('<td>').text(exportData.created).appendTo($row);
+		$('<td>').append($('<code>').text(exportData.filename)).appendTo($row);
+		$('<td>').text(exportData.size_label).appendTo($row);
+
+		$('<input>')
+			.attr({ type: 'url', readonly: 'readonly' })
+			.addClass('regular-text code bbm-table-url')
+			.val(exportData.url)
+			.appendTo($urlCell);
+
+		$('<button>')
+			.attr({ type: 'button' })
+			.addClass('button bbm-copy-url')
+			.data('url', exportData.url)
+			.text(BlueprintBundleMaker.i18n.copyUrl)
+			.appendTo($urlCell);
+
+		$urlCell.appendTo($row);
+
+		$('<a>')
+			.addClass('button')
+			.attr('href', exportData.url)
+			.text(BlueprintBundleMaker.i18n.download)
+			.appendTo($actions);
+
+		$('<a>')
+			.addClass('button button-primary')
+			.attr({
+				href: exportData.playground_url,
+				target: '_blank',
+				rel: 'noopener'
+			})
+			.text(BlueprintBundleMaker.i18n.openPlayground)
+			.appendTo($actions);
+
+		$('<a>')
+			.addClass('button-link-delete bbm-delete-public-bundle')
+			.attr('href', exportData.delete_url)
+			.text(BlueprintBundleMaker.i18n.delete)
+			.appendTo($actions);
+
+		$actions.appendTo($row);
+		$('#bbm-public-bundles-body').prepend($row);
+	}
+
 	$(function () {
 		$('#bbm-start').on('click', function () {
 			$('#bbm-download').prop('hidden', true).attr('href', '#');
+			$('#bbm-public-links').prop('hidden', true);
+			$('#bbm-public-url').val('');
+			$('#bbm-open-playground').prop('hidden', true).attr('href', '#');
 			$('#bbm-warnings').prop('hidden', true).empty();
 			$('#bbm-status').text(BlueprintBundleMaker.i18n.working);
 			$('#bbm-progress-bar').css('width', '0%');
@@ -118,6 +221,29 @@
 				}
 				setBusy(false);
 			}).fail(fail);
+		});
+
+		$(document).on('click', '.bbm-copy-url', function () {
+			var $button = $(this);
+			var originalText = $button.text();
+			var text = getCopyText($button);
+
+			if (!text) {
+				return;
+			}
+
+			$.when(copyText(text)).done(function () {
+				$button.text(BlueprintBundleMaker.i18n.copied);
+				window.setTimeout(function () {
+					$button.text(originalText);
+				}, 1400);
+			});
+		});
+
+		$(document).on('click', '.bbm-delete-public-bundle', function (event) {
+			if (!window.confirm(BlueprintBundleMaker.i18n.confirmDelete)) {
+				event.preventDefault();
+			}
 		});
 	});
 })(jQuery);

@@ -13,6 +13,29 @@
 	margin: 18px 0;
 }
 
+.blueprint-bundle-maker .bbm-public-links {
+	margin: 16px 0;
+}
+
+.blueprint-bundle-maker .bbm-public-links label {
+	display: block;
+	margin-bottom: 6px;
+	font-weight: 600;
+}
+
+.blueprint-bundle-maker .bbm-url-row,
+.blueprint-bundle-maker .bbm-row-actions {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.blueprint-bundle-maker .bbm-url-row input,
+.blueprint-bundle-maker .bbm-table-url {
+	min-width: min(100%, 440px);
+}
+
 .blueprint-bundle-maker .bbm-progress {
 	height: 14px;
 	overflow: hidden;
@@ -69,13 +92,21 @@
 	margin-bottom: 0;
 }
 
+.blueprint-bundle-maker .bbm-public-bundles {
+	margin-top: 10px;
+}
+
 @media (max-width: 782px) {
 	.blueprint-bundle-maker .bbm-actions,
-	.blueprint-bundle-maker .bbm-details {
+	.blueprint-bundle-maker .bbm-details,
+	.blueprint-bundle-maker .bbm-url-row,
+	.blueprint-bundle-maker .bbm-row-actions {
 		display: block;
 	}
 
-	.blueprint-bundle-maker .bbm-actions .button {
+	.blueprint-bundle-maker .bbm-actions .button,
+	.blueprint-bundle-maker .bbm-url-row .button,
+	.blueprint-bundle-maker .bbm-row-actions .button {
 		width: 100%;
 		margin-bottom: 8px;
 		text-align: center;

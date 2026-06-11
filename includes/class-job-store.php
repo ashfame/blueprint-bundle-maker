@@ -181,20 +181,20 @@ final class Job_Store {
 	/**
 	 * Publish a generated bundle to a public, unguessable URL.
 	 *
-	 * @param array  $job Job state.
 	 * @param string $bundle_path Private bundle path.
+	 * @param string $existing_public_filename Existing public filename.
 	 * @return array|null Public export record.
 	 * @throws \RuntimeException When publishing fails.
 	 */
-	public function publish_bundle( array &$job, $bundle_path ) {
+	public function publish_bundle_file( $bundle_path, $existing_public_filename = '' ) {
 		if ( ! is_readable( $bundle_path ) ) {
 			throw new \RuntimeException( esc_html__( 'The generated bundle cannot be read for publishing.', 'blueprint-bundle-maker' ) );
 		}
 
 		$this->ensure_public_root();
 
-		if ( ! empty( $job['paths']['public_bundle'] ) ) {
-			$existing_export = $this->get_public_export( $job['paths']['public_bundle'] );
+		if ( '' !== $existing_public_filename ) {
+			$existing_export = $this->get_public_export( $existing_public_filename );
 			if ( $existing_export ) {
 				return $existing_export;
 			}
@@ -218,49 +218,162 @@ final class Job_Store {
 			throw new \RuntimeException( esc_html__( 'Could not publish the bundle ZIP.', 'blueprint-bundle-maker' ) );
 		}
 
-		$job['paths']['public_bundle'] = $filename;
-
 		return $this->get_public_export( $filename );
 	}
 
 	/**
-	 * Get completed bundle generation jobs.
+	 * Publish a generated bundle to a public, unguessable URL.
+	 *
+	 * @param array  $job Job state.
+	 * @param string $bundle_path Private bundle path.
+	 * @return array|null Public export record.
+	 * @throws \RuntimeException When publishing fails.
+	 */
+	public function publish_bundle( array &$job, $bundle_path ) {
+		$public_export = $this->publish_bundle_file(
+			$bundle_path,
+			! empty( $job['paths']['public_bundle'] ) ? $job['paths']['public_bundle'] : ''
+		);
+
+		if ( $public_export ) {
+			$job['paths']['public_bundle'] = $public_export['filename'];
+		}
+
+		return $public_export;
+	}
+
+	/**
+	 * Get completed bundle generation jobs from the filesystem.
 	 *
 	 * @return array
 	 */
-	public function list_completed_jobs() {
-		global $wpdb;
+	public function list_generated_bundles() {
+		$jobs_root = trailingslashit( $this->get_root_dir() ) . 'jobs';
+		if ( ! is_dir( $jobs_root ) ) {
+			return array();
+		}
 
-		$option_names = $wpdb->get_col(
-			$wpdb->prepare(
-				"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s",
-				$wpdb->esc_like( self::OPTION_PREFIX ) . '%'
-			)
-		);
+		$files = glob( $jobs_root . '/*/blueprint-bundle-*.zip' );
+		if ( ! is_array( $files ) ) {
+			return array();
+		}
 
-		$jobs = array();
-		foreach ( $option_names as $option_name ) {
-			$job = get_option( $option_name );
-			if ( ! is_array( $job ) || 'completed' !== ( $job['status'] ?? '' ) ) {
+		$bundles = array();
+		foreach ( $files as $bundle_path ) {
+			$job_id = basename( dirname( $bundle_path ) );
+			if ( '' === $this->sanitize_job_id( $job_id ) || ! is_readable( $bundle_path ) ) {
 				continue;
 			}
 
-			$bundle_path = $this->get_bundle_path( $job );
-			if ( '' === $bundle_path || ! is_readable( $bundle_path ) ) {
+			$bundle = $this->get_generated_bundle_by_path( $bundle_path );
+			if ( ! $bundle ) {
 				continue;
 			}
 
-			$jobs[] = $job;
+			$bundles[] = $bundle;
 		}
 
 		usort(
-			$jobs,
-			function ( $a, $b ) {
-				return (int) filemtime( $this->get_bundle_path( $b ) ) <=> (int) filemtime( $this->get_bundle_path( $a ) );
+			$bundles,
+			static function ( $a, $b ) {
+				return (int) $b['modified'] <=> (int) $a['modified'];
 			}
 		);
 
-		return $jobs;
+		return $bundles;
+	}
+
+	/**
+	 * Get a generated bundle by its filesystem ID.
+	 *
+	 * @param string $bundle_id Bundle ID.
+	 * @return array|null
+	 */
+	public function get_generated_bundle( $bundle_id ) {
+		$parts = explode( ':', (string) $bundle_id, 2 );
+		if ( 2 !== count( $parts ) ) {
+			return null;
+		}
+
+		$job_id   = $this->sanitize_job_id( rawurldecode( $parts[0] ) );
+		$filename = sanitize_file_name( rawurldecode( $parts[1] ) );
+
+		if ( '' === $job_id || '' === $filename || '.zip' !== substr( $filename, -4 ) ) {
+			return null;
+		}
+
+		$path = trailingslashit( $this->get_root_dir() ) . 'jobs/' . $job_id . '/' . $filename;
+
+		return $this->get_generated_bundle_by_path( $path );
+	}
+
+	/**
+	 * Get a generated bundle by path.
+	 *
+	 * @param string $bundle_path Bundle path.
+	 * @return array|null
+	 */
+	public function get_generated_bundle_by_path( $bundle_path ) {
+		$bundle_path = wp_normalize_path( (string) $bundle_path );
+		$jobs_root   = trailingslashit( wp_normalize_path( $this->get_root_dir() ) ) . 'jobs/';
+
+		if ( 0 !== strpos( $bundle_path, $jobs_root ) || ! is_file( $bundle_path ) || ! is_readable( $bundle_path ) ) {
+			return null;
+		}
+
+		$job_id = basename( dirname( $bundle_path ) );
+		if ( '' === $this->sanitize_job_id( $job_id ) ) {
+			return null;
+		}
+
+		$filename = basename( $bundle_path );
+		if ( '.zip' !== substr( $filename, -4 ) ) {
+			return null;
+		}
+
+		$job           = $this->get( $job_id );
+		$public_export = null;
+
+		if ( is_array( $job ) && ! empty( $job['paths']['public_bundle'] ) ) {
+			$public_export = $this->get_public_export( $job['paths']['public_bundle'] );
+		}
+
+		if ( ! $public_export ) {
+			$public_export = $this->find_public_export_for_bundle( $bundle_path );
+		}
+
+		return array(
+			'id'                => rawurlencode( $job_id ) . ':' . rawurlencode( $filename ),
+			'job_id'            => $job_id,
+			'filename'          => $filename,
+			'path'              => $bundle_path,
+			'public_filename'   => $public_export ? $public_export['filename'] : '',
+			'public_url'        => $public_export ? $public_export['url'] : '',
+			'playground_url'    => $public_export ? $public_export['playground_url'] : '',
+			'modified'          => (int) filemtime( $bundle_path ),
+			'size'              => (int) filesize( $bundle_path ),
+		);
+	}
+
+	/**
+	 * Find a public export that appears to be a copy of a generated bundle.
+	 *
+	 * @param string $bundle_path Generated bundle path.
+	 * @return array|null
+	 */
+	public function find_public_export_for_bundle( $bundle_path ) {
+		$bundle_size = is_readable( $bundle_path ) ? (int) filesize( $bundle_path ) : -1;
+		if ( $bundle_size < 0 ) {
+			return null;
+		}
+
+		foreach ( $this->list_public_exports() as $export ) {
+			if ( (int) $export['size'] === $bundle_size && basename( $bundle_path ) === $this->private_filename_from_public_filename( $export['filename'] ) ) {
+				return $export;
+			}
+		}
+
+		return null;
 	}
 
 	/**
@@ -345,17 +458,17 @@ final class Job_Store {
 	 * @return bool
 	 */
 	public function delete_job( $id ) {
-		$job = $this->get( $id );
-		if ( ! $job ) {
+		$bundle = $this->get_generated_bundle( $id );
+		if ( ! $bundle ) {
 			return false;
 		}
 
-		if ( ! empty( $job['paths']['public_bundle'] ) ) {
-			$this->delete_public_export( $job['paths']['public_bundle'] );
+		if ( ! empty( $bundle['public_filename'] ) ) {
+			$this->delete_public_export( $bundle['public_filename'] );
 		}
 
-		$this->remove_directory( $this->get_job_dir( $job['id'] ) );
-		delete_option( self::OPTION_PREFIX . $job['id'] );
+		$this->remove_directory( $this->get_job_dir( $bundle['job_id'] ) );
+		delete_option( self::OPTION_PREFIX . $bundle['job_id'] );
 
 		return true;
 	}
@@ -601,5 +714,20 @@ final class Job_Store {
 		}
 
 		return $filename;
+	}
+
+	/**
+	 * Infer the private bundle filename from a public bundle filename.
+	 *
+	 * @param string $public_filename Public filename.
+	 * @return string
+	 */
+	private function private_filename_from_public_filename( $public_filename ) {
+		$public_filename = $this->sanitize_public_filename( $public_filename );
+		if ( '' === $public_filename ) {
+			return '';
+		}
+
+		return preg_replace( '/-[a-z0-9]+\.zip$/', '.zip', $public_filename );
 	}
 }

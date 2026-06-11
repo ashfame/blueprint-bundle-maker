@@ -123,8 +123,8 @@
 	}
 
 	function renderBundleRow(bundle) {
-		var $existing = $('tr[data-bbm-job-id="' + bundle.job_id + '"]');
-		var $row = $('<tr>').attr('data-bbm-job-id', bundle.job_id);
+		var $existing = $('tr[data-bbm-bundle-id="' + bundle.id + '"]');
+		var $row = $('<tr>').attr('data-bbm-bundle-id', bundle.id);
 		var $urlCell = $('<td>');
 		var $actions = $('<td>').addClass('bbm-row-actions');
 
@@ -171,7 +171,7 @@
 			$('<button>')
 				.attr({ type: 'button' })
 				.addClass('button button-primary bbm-publish-bundle')
-				.data('job-id', bundle.job_id)
+				.data('bundle-id', bundle.id)
 				.text(BlueprintBundleMaker.i18n.getUrl)
 				.appendTo($actions);
 		}
@@ -214,16 +214,16 @@
 
 		$(document).on('click', '.bbm-publish-bundle', function () {
 			var $button = $(this);
-			var jobId = $button.data('job-id');
+			var bundleId = $button.data('bundle-id');
 
-			if (!jobId) {
+			if (!bundleId) {
 				return;
 			}
 
 			$button.prop('disabled', true);
 
 			post('blueprint_bundle_maker_publish_bundle', {
-				job_id: jobId
+				bundle_id: bundleId
 			}).done(function (response) {
 				if (!response || !response.success || !response.data || !response.data.bundle) {
 					fail();

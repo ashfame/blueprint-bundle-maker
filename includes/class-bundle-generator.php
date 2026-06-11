@@ -137,33 +137,42 @@ final class Bundle_Generator {
 	}
 
 	/**
-	 * Publish a completed job bundle to the public bundle directory.
+	 * Publish a generated bundle to the public bundle directory.
 	 *
-	 * @param string $id Job ID.
-	 * @return array
+	 * @param string $bundle_id Bundle ID.
+	 * @return array|null
 	 * @throws \RuntimeException When the job cannot be published.
 	 */
-	public function publish_bundle( $id ) {
-		$job = $this->get_job_or_fail( $id );
-
-		if ( 'completed' !== $job['status'] ) {
-			throw new \RuntimeException( esc_html__( 'Only completed bundles can be published.', 'blueprint-bundle-maker' ) );
-		}
-
-		$bundle_path = $this->store->get_bundle_path( $job );
-		if ( '' === $bundle_path || ! is_readable( $bundle_path ) ) {
+	public function publish_bundle( $bundle_id ) {
+		$bundle = $this->store->get_generated_bundle( $bundle_id );
+		if ( ! $bundle ) {
 			throw new \RuntimeException( esc_html__( 'The generated bundle file is not available.', 'blueprint-bundle-maker' ) );
 		}
 
-		$public_export = $this->store->publish_bundle( $job, $bundle_path );
-		if ( ! empty( $public_export['url'] ) && 0 === strpos( $public_export['url'], 'http://' ) ) {
-			$this->store->add_warning(
-				$job,
-				__( 'The public bundle URL uses HTTP. The Playground website may require an HTTPS URL that is reachable from the browser.', 'blueprint-bundle-maker' )
-			);
+		$public_export = $this->store->publish_bundle_file( $bundle['path'], $bundle['public_filename'] );
+		if ( ! $public_export ) {
+			throw new \RuntimeException( esc_html__( 'Could not publish the bundle ZIP.', 'blueprint-bundle-maker' ) );
 		}
 
-		return $this->store->save( $job );
+		if ( ! empty( $public_export['url'] ) && 0 === strpos( $public_export['url'], 'http://' ) ) {
+			$job = $this->store->get( $bundle['job_id'] );
+			if ( $job ) {
+				$this->store->add_warning(
+					$job,
+					__( 'The public bundle URL uses HTTP. The Playground website may require an HTTPS URL that is reachable from the browser.', 'blueprint-bundle-maker' )
+				);
+				$job['paths']['public_bundle'] = $public_export['filename'];
+				$this->store->save( $job );
+			}
+		} else {
+			$job = $this->store->get( $bundle['job_id'] );
+			if ( $job ) {
+				$job['paths']['public_bundle'] = $public_export['filename'];
+				$this->store->save( $job );
+			}
+		}
+
+		return $this->store->get_generated_bundle( $bundle_id );
 	}
 
 	/**

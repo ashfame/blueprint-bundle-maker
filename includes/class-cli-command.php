@@ -108,15 +108,14 @@ final class CLI_Command {
 		\WP_CLI::success( 'Bundle ready: ' . $bundle_path );
 
 		if ( $publish ) {
-			$job = $this->generator->publish_bundle( $job['id'] );
-		}
-
-		if ( $publish && ! empty( $job['paths']['public_bundle'] ) ) {
-			$public_export = $this->store->get_public_export( $job['paths']['public_bundle'] );
-			if ( $public_export ) {
-				\WP_CLI::log( 'Public URL: ' . $public_export['url'] );
-				\WP_CLI::log( 'Playground URL: ' . $public_export['playground_url'] );
+			$bundle = $this->store->get_generated_bundle_by_path( $this->store->get_bundle_path( $job ) );
+			if ( ! $bundle ) {
+				\WP_CLI::error( 'Could not locate the generated bundle for publishing.' );
 			}
+
+			$bundle = $this->generator->publish_bundle( $bundle['id'] );
+			\WP_CLI::log( 'Public URL: ' . $bundle['public_url'] );
+			\WP_CLI::log( 'Playground URL: ' . $bundle['playground_url'] );
 		}
 	}
 }

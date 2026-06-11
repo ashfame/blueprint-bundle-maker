@@ -49,7 +49,6 @@ final class Admin_Page {
 		add_action( 'wp_ajax_blueprint_bundle_maker_publish_bundle', array( $this, 'ajax_publish_bundle' ) );
 		add_action( 'admin_post_blueprint_bundle_maker_download', array( $this, 'download' ) );
 		add_action( 'admin_post_blueprint_bundle_maker_delete_bundle', array( $this, 'delete_bundle' ) );
-		add_action( 'admin_post_blueprint_bundle_maker_delete_public_bundle', array( $this, 'delete_public_bundle' ) );
 	}
 
 	/**
@@ -230,11 +229,11 @@ final class Admin_Page {
 	public function ajax_publish_bundle() {
 		$this->check_ajax_permissions();
 
-		$job_id = isset( $_POST['job_id'] ) ? sanitize_text_field( wp_unslash( $_POST['job_id'] ) ) : '';
+		$bundle_id = isset( $_POST['bundle_id'] ) ? sanitize_text_field( wp_unslash( $_POST['bundle_id'] ) ) : '';
 
 		try {
-			$job = $this->generator->publish_bundle( $job_id );
-			wp_send_json_success( array( 'bundle' => $this->format_bundle_row( $job ) ) );
+			$bundle = $this->generator->publish_bundle( $bundle_id );
+			wp_send_json_success( array( 'bundle' => $this->format_bundle_row( $bundle ) ) );
 		} catch ( \Throwable $throwable ) {
 			wp_send_json_error( array( 'message' => $throwable->getMessage() ), 500 );
 		}
@@ -256,7 +255,14 @@ final class Admin_Page {
 		check_admin_referer( 'blueprint_bundle_maker_download_' . $job_id );
 
 		$job = $this->store->get( $job_id );
-		if ( ! $job || 'completed' !== $job['status'] ) {
+		if ( $job ) {
+			$bundle_path = $this->store->get_bundle_path( $job );
+		} else {
+			$bundle = $this->store->get_generated_bundle( $job_id );
+			$bundle_path = $bundle ? $bundle['path'] : '';
+		}
+
+		if ( ! $bundle_path ) {
 			wp_die(
 				esc_html__( 'Bundle job not found or not complete.', 'blueprint-bundle-maker' ),
 				'',
@@ -264,7 +270,6 @@ final class Admin_Page {
 			);
 		}
 
-		$bundle_path = $this->store->get_bundle_path( $job );
 		if ( ! $bundle_path || ! is_readable( $bundle_path ) ) {
 			wp_die(
 				esc_html__( 'Bundle file not found.', 'blueprint-bundle-maker' ),
@@ -286,32 +291,6 @@ final class Admin_Page {
 	}
 
 	/**
-	 * Delete a public bundle export.
-	 */
-	public function delete_public_bundle() {
-		if ( ! current_user_can( $this->capability() ) ) {
-			wp_die(
-				esc_html__( 'You are not allowed to delete bundles.', 'blueprint-bundle-maker' ),
-				'',
-				array( 'response' => 403 )
-			);
-		}
-
-		$filename = isset( $_GET['file'] ) ? sanitize_file_name( wp_unslash( $_GET['file'] ) ) : '';
-		check_admin_referer( 'blueprint_bundle_maker_delete_public_bundle_' . $filename );
-
-		$deleted  = $this->store->delete_public_export( $filename );
-		$redirect = add_query_arg(
-			'bbm_deleted',
-			$deleted ? '1' : '0',
-			admin_url( 'tools.php?page=blueprint-bundle-maker' )
-		);
-
-		wp_safe_redirect( $redirect );
-		exit;
-	}
-
-	/**
 	 * Delete a generated bundle job.
 	 */
 	public function delete_bundle() {
@@ -323,10 +302,10 @@ final class Admin_Page {
 			);
 		}
 
-		$job_id = isset( $_GET['job_id'] ) ? sanitize_text_field( wp_unslash( $_GET['job_id'] ) ) : '';
-		check_admin_referer( 'blueprint_bundle_maker_delete_bundle_' . $job_id );
+		$bundle_id = isset( $_GET['bundle_id'] ) ? sanitize_text_field( wp_unslash( $_GET['bundle_id'] ) ) : '';
+		check_admin_referer( 'blueprint_bundle_maker_delete_bundle_' . $bundle_id );
 
-		$deleted  = $this->store->delete_job( $job_id );
+		$deleted  = $this->store->delete_job( $bundle_id );
 		$redirect = add_query_arg(
 			'bbm_deleted',
 			$deleted ? '1' : '0',
@@ -379,7 +358,11 @@ final class Admin_Page {
 		);
 
 		if ( 'completed' === $job['status'] ) {
-			$data['bundle'] = $this->format_bundle_row( $job );
+			$bundle_path = $this->store->get_bundle_path( $job );
+			$bundle      = $bundle_path ? $this->store->get_generated_bundle_by_path( $bundle_path ) : null;
+			if ( $bundle ) {
+				$data['bundle'] = $this->format_bundle_row( $bundle );
+			}
 		}
 
 		return $data;
@@ -389,7 +372,7 @@ final class Admin_Page {
 	 * Render generated bundles.
 	 */
 	private function render_generated_bundles_table() {
-		$jobs = $this->store->list_completed_jobs();
+		$bundles = $this->store->list_generated_bundles();
 		?>
 		<h2><?php esc_html_e( 'Generated Blueprint Bundles', 'blueprint-bundle-maker' ); ?></h2>
 
@@ -419,14 +402,14 @@ final class Admin_Page {
 				</tr>
 			</thead>
 			<tbody id="bbm-generated-bundles-body">
-				<?php if ( empty( $jobs ) ) : ?>
+				<?php if ( empty( $bundles ) ) : ?>
 					<tr id="bbm-no-generated-bundles">
 						<td colspan="5"><?php esc_html_e( 'No generated bundles yet.', 'blueprint-bundle-maker' ); ?></td>
 					</tr>
 				<?php endif; ?>
 
-				<?php foreach ( $jobs as $job ) : ?>
-					<?php $this->render_bundle_row( $this->format_bundle_row( $job ) ); ?>
+				<?php foreach ( $bundles as $bundle ) : ?>
+					<?php $this->render_bundle_row( $this->format_bundle_row( $bundle ) ); ?>
 				<?php endforeach; ?>
 			</tbody>
 		</table>
@@ -440,7 +423,7 @@ final class Admin_Page {
 	 */
 	private function render_bundle_row( array $bundle ) {
 		?>
-		<tr data-bbm-job-id="<?php echo esc_attr( $bundle['job_id'] ); ?>">
+		<tr data-bbm-bundle-id="<?php echo esc_attr( $bundle['id'] ); ?>">
 			<td><?php echo esc_html( $bundle['created'] ); ?></td>
 			<td><code><?php echo esc_html( $bundle['filename'] ); ?></code></td>
 			<td><?php echo esc_html( $bundle['size_label'] ); ?></td>
@@ -463,7 +446,7 @@ final class Admin_Page {
 						<?php esc_html_e( 'Open Playground', 'blueprint-bundle-maker' ); ?>
 					</a>
 				<?php else : ?>
-					<button type="button" class="button button-primary bbm-publish-bundle" data-job-id="<?php echo esc_attr( $bundle['job_id'] ); ?>">
+					<button type="button" class="button button-primary bbm-publish-bundle" data-bundle-id="<?php echo esc_attr( $bundle['id'] ); ?>">
 						<?php esc_html_e( 'Get URL', 'blueprint-bundle-maker' ); ?>
 					</button>
 				<?php endif; ?>
@@ -478,39 +461,31 @@ final class Admin_Page {
 	/**
 	 * Format a generated bundle row for PHP rendering and AJAX.
 	 *
-	 * @param array $job Job state.
+	 * @param array $bundle Bundle data.
 	 * @return array
 	 */
-	private function format_bundle_row( array $job ) {
-		$bundle_path   = $this->store->get_bundle_path( $job );
-		$filename      = basename( $bundle_path );
-		$public_export = null;
-
-		if ( ! empty( $job['paths']['public_bundle'] ) ) {
-			$public_export = $this->store->get_public_export( $job['paths']['public_bundle'] );
-		}
-
+	private function format_bundle_row( array $bundle ) {
 		return array(
-			'job_id'         => $job['id'],
-			'filename'       => $filename,
-			'created'        => wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) filemtime( $bundle_path ) ),
-			'size'           => (int) filesize( $bundle_path ),
-			'size_label'     => size_format( (int) filesize( $bundle_path ), 2 ),
+			'id'             => $bundle['id'],
+			'filename'       => $bundle['filename'],
+			'created'        => wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $bundle['modified'] ),
+			'size'           => (int) $bundle['size'],
+			'size_label'     => size_format( (int) $bundle['size'], 2 ),
 			'download_url'   => $this->nonce_url(
-				admin_url( 'admin-post.php?action=blueprint_bundle_maker_download&job_id=' . rawurlencode( $job['id'] ) ),
-				'blueprint_bundle_maker_download_' . $job['id']
+				admin_url( 'admin-post.php?action=blueprint_bundle_maker_download&job_id=' . rawurlencode( $bundle['id'] ) ),
+				'blueprint_bundle_maker_download_' . $bundle['id']
 			),
-			'public_url'     => $public_export ? $public_export['url'] : '',
-			'playground_url' => $public_export ? $public_export['playground_url'] : '',
+			'public_url'     => $bundle['public_url'],
+			'playground_url' => $bundle['playground_url'],
 			'delete_url'     => $this->nonce_url(
 				add_query_arg(
 					array(
-						'action' => 'blueprint_bundle_maker_delete_bundle',
-						'job_id' => $job['id'],
+						'action'    => 'blueprint_bundle_maker_delete_bundle',
+						'bundle_id' => $bundle['id'],
 					),
 					admin_url( 'admin-post.php' )
 				),
-				'blueprint_bundle_maker_delete_bundle_' . $job['id']
+				'blueprint_bundle_maker_delete_bundle_' . $bundle['id']
 			),
 		);
 	}

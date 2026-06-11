@@ -21,9 +21,9 @@ final class Blueprint_Writer {
 	public function build( array $job ) {
 		$steps = array(
 			array(
-				'step'              => 'importWordPressFiles',
-				'wordPressFilesZip' => $this->get_bundled_file_reference( '/files/wordpress-files.zip' ),
-				'pathInZip'         => '/',
+				'step'          => 'unzip',
+				'zipFile'       => $this->get_bundled_file_reference( '/files/wordpress-files.zip' ),
+				'extractToPath' => '/wordpress',
 			),
 			array(
 				'step'     => 'login',

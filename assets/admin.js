@@ -137,6 +137,7 @@
 
 		if (bundle.public_url) {
 			var $urlLine = $('<div>').addClass('bbm-public-url-line');
+			var $inlineLinks = $('<div>').addClass('bbm-inline-links');
 
 			$urlLine.append($('<input>')
 				.attr({ type: 'url', readonly: 'readonly' })
@@ -144,6 +145,25 @@
 				.val(bundle.public_url));
 
 			$fileCell.append($urlLine);
+
+			$inlineLinks.append($('<button>')
+				.attr({ type: 'button' })
+				.addClass('button-link bbm-copy-url')
+				.data('url', bundle.public_url)
+				.text(BlueprintBundleMaker.i18n.copyUrl));
+
+			$inlineLinks.append($('<span>').attr('aria-hidden', 'true').text('|'));
+
+			$inlineLinks.append($('<a>')
+				.attr({
+					href: bundle.playground_url,
+					target: '_blank',
+					rel: 'noopener'
+				})
+				.append(document.createTextNode(BlueprintBundleMaker.i18n.openPlayground + ' '))
+				.append($('<span>').attr('aria-hidden', 'true').html('&rarr;')));
+
+			$fileCell.append($inlineLinks);
 		} else {
 			$fileCell.append($('<div>').addClass('description').text(BlueprintBundleMaker.i18n.notPublished));
 		}
@@ -157,24 +177,7 @@
 			.text(BlueprintBundleMaker.i18n.download)
 			.appendTo($actions);
 
-		if (bundle.public_url) {
-			$('<button>')
-				.attr({ type: 'button' })
-				.addClass('button bbm-copy-url')
-				.data('url', bundle.public_url)
-				.text(BlueprintBundleMaker.i18n.copyUrl)
-				.appendTo($actions);
-
-			$('<a>')
-				.addClass('button')
-				.attr({
-					href: bundle.playground_url,
-					target: '_blank',
-					rel: 'noopener'
-				})
-				.text(BlueprintBundleMaker.i18n.openPlayground)
-				.appendTo($actions);
-		} else {
+		if (!bundle.public_url) {
 			$('<button>')
 				.attr({ type: 'button' })
 				.addClass('button bbm-publish-bundle')
@@ -184,7 +187,7 @@
 		}
 
 		$('<a>')
-			.addClass('button bbm-delete-bundle')
+			.addClass('submitdelete bbm-delete-bundle')
 			.attr('href', bundle.delete_url)
 			.text(BlueprintBundleMaker.i18n.delete)
 			.appendTo($actions);

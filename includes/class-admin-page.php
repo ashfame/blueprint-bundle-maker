@@ -451,6 +451,15 @@ final class Admin_Page {
 					<div class="bbm-public-url-line">
 						<input type="url" class="regular-text code bbm-table-url" readonly value="<?php echo esc_url( $bundle['public_url'] ); ?>" />
 					</div>
+					<div class="bbm-inline-links">
+						<button type="button" class="button-link bbm-copy-url" data-url="<?php echo esc_url( $bundle['public_url'] ); ?>">
+							<?php esc_html_e( 'Copy URL', 'blueprint-bundle-maker' ); ?>
+						</button>
+						<span aria-hidden="true">|</span>
+						<a href="<?php echo esc_url( $bundle['playground_url'] ); ?>" target="_blank" rel="noopener">
+							<?php esc_html_e( 'Open in Playground', 'blueprint-bundle-maker' ); ?> &rarr;
+						</a>
+					</div>
 				<?php else : ?>
 					<div class="description"><?php esc_html_e( 'Not published', 'blueprint-bundle-maker' ); ?></div>
 				<?php endif; ?>
@@ -460,19 +469,12 @@ final class Admin_Page {
 				<a class="button" href="<?php echo esc_url( $bundle['download_url'] ); ?>">
 					<?php esc_html_e( 'Download', 'blueprint-bundle-maker' ); ?>
 				</a>
-				<?php if ( ! empty( $bundle['public_url'] ) ) : ?>
-					<button type="button" class="button bbm-copy-url" data-url="<?php echo esc_url( $bundle['public_url'] ); ?>">
-						<?php esc_html_e( 'Copy URL', 'blueprint-bundle-maker' ); ?>
-					</button>
-					<a class="button" href="<?php echo esc_url( $bundle['playground_url'] ); ?>" target="_blank" rel="noopener">
-						<?php esc_html_e( 'Open in Playground', 'blueprint-bundle-maker' ); ?>
-					</a>
-				<?php else : ?>
+				<?php if ( empty( $bundle['public_url'] ) ) : ?>
 					<button type="button" class="button bbm-publish-bundle" data-bundle-id="<?php echo esc_attr( $bundle['id'] ); ?>">
 						<?php esc_html_e( 'Get URL', 'blueprint-bundle-maker' ); ?>
 					</button>
 				<?php endif; ?>
-				<a class="button bbm-delete-bundle" href="<?php echo esc_url( $bundle['delete_url'] ); ?>">
+				<a class="submitdelete bbm-delete-bundle" href="<?php echo esc_url( $bundle['delete_url'] ); ?>">
 					<?php esc_html_e( 'Delete', 'blueprint-bundle-maker' ); ?>
 				</a>
 			</td>

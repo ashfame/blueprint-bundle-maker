@@ -1,6 +1,8 @@
 # Blueprint Bundle Maker
 
-Blueprint Bundle Maker is a WordPress plugin that generates a WordPress Playground Blueprint bundle ZIP from the current installation.
+<img width="1728" height="781" alt="Screenshot 2026-06-12 at 02 17 54" src="https://github.com/user-attachments/assets/1f9aa70c-969b-49f1-93a4-4145f2affcce" />
+
+Blueprint Bundle Maker is an experimental WordPress plugin that generates a WordPress Playground Blueprint bundle ZIP from the current installation.
 
 The generated ZIP contains:
 

@@ -113,7 +113,7 @@ final class Blueprint_Writer {
 
 		if ( defined( 'PHP_MAJOR_VERSION' ) && defined( 'PHP_MINOR_VERSION' ) ) {
 			$php_version = PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;
-			if ( preg_match( '/^(7\.4|8\.[0-5])$/', $php_version ) ) {
+			if ( in_array( $php_version, $this->get_supported_php_versions(), true ) ) {
 				$preferred_versions['php'] = $php_version;
 			}
 		}
@@ -123,6 +123,15 @@ final class Blueprint_Writer {
 		}
 
 		return (array) apply_filters( 'blueprint_bundle_maker_preferred_versions', $preferred_versions, $job );
+	}
+
+	/**
+	 * Get PHP versions supported by Blueprint v1.
+	 *
+	 * @return array
+	 */
+	private function get_supported_php_versions() {
+		return array( '8.4', '8.3', '8.2', '8.1', '8.0', '7.4', '7.3', '7.2' );
 	}
 
 	/**

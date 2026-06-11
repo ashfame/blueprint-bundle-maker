@@ -322,6 +322,7 @@ final class Bundle_Generator {
 		$wp_files_path  = $this->store->get_job_path( $job, $job['paths']['wordpress_files_zip'] );
 
 		$blueprint = $this->blueprint_writer->build( $job );
+		$this->add_runtime_version_warnings( $job, $blueprint );
 		$manifest  = $this->build_manifest( $job );
 
 		if ( false === file_put_contents( $blueprint_path, wp_json_encode( $blueprint, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ) ) {
@@ -382,6 +383,7 @@ final class Bundle_Generator {
 	private function build_manifest( array $job ) {
 		$wxr_path      = $this->store->get_job_path( $job, $job['paths']['wxr'] );
 		$wp_files_path = $this->store->get_job_path( $job, $job['paths']['wordpress_files_zip'] );
+		$php_version   = defined( 'PHP_VERSION' ) ? PHP_VERSION : '';
 
 		return array(
 			'generator'  => array(
@@ -391,6 +393,8 @@ final class Bundle_Generator {
 			'source'     => array(
 				'site_url'   => home_url(),
 				'wp_version' => get_bloginfo( 'version' ),
+				'php_version' => $php_version,
+				'php_sapi'   => PHP_SAPI,
 				'locale'     => get_locale(),
 				'multisite'  => is_multisite(),
 			),
@@ -412,5 +416,68 @@ final class Bundle_Generator {
 			),
 			'warnings'   => $job['warnings'],
 		);
+	}
+
+	/**
+	 * Add warnings when exact source runtime versions cannot be represented in Blueprint preferences.
+	 *
+	 * @param array $job Job state.
+	 * @param array $blueprint Generated Blueprint.
+	 */
+	private function add_runtime_version_warnings( array &$job, array $blueprint ) {
+		$preferred_versions = isset( $blueprint['preferredVersions'] ) && is_array( $blueprint['preferredVersions'] )
+			? $blueprint['preferredVersions']
+			: array();
+
+		$wp_version = get_bloginfo( 'version' );
+		if (
+			is_string( $wp_version )
+			&& isset( $preferred_versions['wp'] )
+			&& 'latest' !== $preferred_versions['wp']
+			&& $wp_version !== $preferred_versions['wp']
+		) {
+			$this->store->add_warning(
+				$job,
+				sprintf(
+					/* translators: 1: exact WordPress version, 2: Blueprint WordPress version. */
+					__( 'Exact WordPress version %1$s is recorded in metadata; blueprint.json uses %2$s because Playground preferredVersions accepts release lines, not patch versions.', 'blueprint-bundle-maker' ),
+					$wp_version,
+					$preferred_versions['wp']
+				)
+			);
+		}
+
+		$php_version = defined( 'PHP_VERSION' ) ? PHP_VERSION : '';
+		if ( '' === $php_version || empty( $preferred_versions['php'] ) ) {
+			return;
+		}
+
+		if ( 'latest' === $preferred_versions['php'] ) {
+			$this->store->add_warning(
+				$job,
+				sprintf(
+					/* translators: %s: exact PHP version. */
+					__( 'Exact PHP version %s is recorded in metadata; blueprint.json uses latest because the current PHP line is not supported by Playground preferredVersions.', 'blueprint-bundle-maker' ),
+					$php_version
+				)
+			);
+			return;
+		}
+
+		if ( 0 !== strpos( $php_version, $preferred_versions['php'] . '.' ) && $php_version !== $preferred_versions['php'] ) {
+			return;
+		}
+
+		if ( $php_version !== $preferred_versions['php'] ) {
+			$this->store->add_warning(
+				$job,
+				sprintf(
+					/* translators: 1: exact PHP version, 2: Blueprint PHP version. */
+					__( 'Exact PHP version %1$s is recorded in metadata; blueprint.json uses %2$s because Playground preferredVersions accepts major/minor PHP versions, not patch versions.', 'blueprint-bundle-maker' ),
+					$php_version,
+					$preferred_versions['php']
+				)
+			);
+		}
 	}
 }

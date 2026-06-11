@@ -22,10 +22,8 @@ final class Blueprint_Writer {
 		$steps = array(
 			array(
 				'step'              => 'importWordPressFiles',
-				'wordPressFilesZip' => array(
-					'resource' => 'bundled',
-					'path'     => '/files/wordpress-files.zip',
-				),
+				'wordPressFilesZip' => $this->get_bundled_file_reference( '/files/wordpress-files.zip' ),
+				'pathInZip'         => '/',
 			),
 			array(
 				'step'     => 'login',
@@ -58,10 +56,7 @@ final class Blueprint_Writer {
 
 		$steps[] = array(
 			'step' => 'importWxr',
-			'file' => array(
-				'resource' => 'bundled',
-				'path'     => '/content/site.wxr',
-			),
+			'file' => $this->get_bundled_file_reference( '/content/site.wxr' ),
 		);
 
 		$safe_options = $this->get_safe_options( $job );
@@ -85,6 +80,19 @@ final class Blueprint_Writer {
 		);
 
 		return (array) apply_filters( 'blueprint_bundle_maker_blueprint', $blueprint, $job );
+	}
+
+	/**
+	 * Build a bundled file reference for a file inside the Blueprint bundle ZIP.
+	 *
+	 * @param string $path Bundle-root-relative path.
+	 * @return array
+	 */
+	private function get_bundled_file_reference( $path ) {
+		return array(
+			'resource' => 'bundled',
+			'path'     => '/' . ltrim( wp_normalize_path( (string) $path ), '/' ),
+		);
 	}
 
 	/**

@@ -81,14 +81,14 @@ final class Admin_Page {
 			'blueprint-bundle-maker-admin',
 			BLUEPRINT_BUNDLE_MAKER_URL . 'assets/admin.css',
 			array(),
-			file_exists( $css_path ) ? filemtime( $css_path ) : BLUEPRINT_BUNDLE_MAKER_VERSION
+			$this->asset_version( $css_path )
 		);
 
 		wp_enqueue_script(
 			'blueprint-bundle-maker-admin',
 			BLUEPRINT_BUNDLE_MAKER_URL . 'assets/admin.js',
 			array( 'jquery' ),
-			file_exists( $js_path ) ? filemtime( $js_path ) : BLUEPRINT_BUNDLE_MAKER_VERSION,
+			$this->asset_version( $js_path ),
 			true
 		);
 
@@ -334,6 +334,18 @@ final class Admin_Page {
 	 */
 	private function capability() {
 		return (string) apply_filters( 'blueprint_bundle_maker_job_capability', 'export' );
+	}
+
+	/**
+	 * Build a cache-busting asset version.
+	 *
+	 * @param string $path Asset path.
+	 * @return string
+	 */
+	private function asset_version( $path ) {
+		$file_version = file_exists( $path ) ? (string) filemtime( $path ) : '0';
+
+		return BLUEPRINT_BUNDLE_MAKER_VERSION . '-' . $file_version;
 	}
 
 	/**

@@ -15,6 +15,8 @@ The WordPress files ZIP contains `wp-content` with smart exclusions for cache, b
 
 `blueprint.json` uses the closest Playground-supported WordPress and PHP runtime lines in `preferredVersions`. Exact source WordPress and PHP versions are recorded in `metadata/manifest.json`, and the job warnings explain any loss of patch-level precision.
 
+During WXR import, generated bundles install a temporary Playground MU plugin that serves attachment download requests from the bundled `wp-content/uploads` files before falling back to origin URLs.
+
 ## Admin Usage
 
 Activate the plugin, then go to **Tools > Blueprint Bundle Maker** and click **Generate Bundle**. The browser keeps the staged job moving through AJAX requests and shows progress until the download is ready.
@@ -40,6 +42,7 @@ Use `--publish` to also publish the generated bundle and print the public URL pl
 - `blueprint_bundle_maker_safe_options`
 - `blueprint_bundle_maker_active_plugins`
 - `blueprint_bundle_maker_preferred_versions`
+- `blueprint_bundle_maker_enable_local_media_import_interceptor`
 - `blueprint_bundle_maker_job_capability`
 - `blueprint_bundle_maker_wxr_args`
 - `blueprint_bundle_maker_zip_chunk_file_limit`

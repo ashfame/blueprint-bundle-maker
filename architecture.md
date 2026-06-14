@@ -173,7 +173,9 @@ Important steps:
 - `setSiteLanguage` is added for non-`en_US` locales.
 - `activateTheme` restores the active theme folder.
 - `activatePlugin` restores active plugins except this exporter plugin.
+- A temporary `runPHP` step installs a Playground MU plugin that intercepts WXR attachment downloads and serves matching files from `/wordpress/wp-content/uploads`.
 - `importWxr` imports the WXR content.
+- A cleanup `runPHP` step removes the temporary media interceptor and logs any origin URL fallbacks.
 - `setSiteOptions` restores a safe allowlist of scalar site options.
 - `runPHP` maps front page/posts page options after WXR import when needed.
 - Final `runPHP` flushes rewrite rules so restored permalink structures work without manually visiting Settings > Permalinks.
@@ -218,6 +220,7 @@ Filters:
 - `blueprint_bundle_maker_safe_options`
 - `blueprint_bundle_maker_active_plugins`
 - `blueprint_bundle_maker_preferred_versions`
+- `blueprint_bundle_maker_enable_local_media_import_interceptor`
 - `blueprint_bundle_maker_job_capability`
 - `blueprint_bundle_maker_wxr_args`
 - `blueprint_bundle_maker_zip_chunk_file_limit`
